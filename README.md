@@ -1,6 +1,14 @@
 # HeisenLab
 
-Aplicativo de Química Analítica com interface gráfica para cálculos químicos, voltamogramas e análise estatística.
+<p align="center">
+  <img src="assets/banner.png" alt="HeisenLab Banner" width="100%">
+</p>
+
+<p align="center">
+  <strong>Química Analítica • Interface Moderna • Cálculos Precisos</strong>
+</p>
+
+Aplicativo de Química Analítica com interface gráfica para cálculos químicos, voltamogramas e análise estatística. Desenvolvido com PySide6, matplotlib e numpy para máxima precisão e usabilidade.
 
 ## Funcionalidades
 
