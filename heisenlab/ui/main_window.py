@@ -4,7 +4,7 @@ import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget
 
 from .calculations_tab import CalculationsTab
-from .calibration_tab import CalibrationTab
+from .calibration_tab import VoltammogramTab
 from .properties_tab import PropertiesTab
 from .statistics_tab import StatisticsTab
 
@@ -16,7 +16,7 @@ class MainWindow(QMainWindow):
 
         tabs = QTabWidget()
         tabs.addTab(CalculationsTab(), "Cálculos")
-        tabs.addTab(CalibrationTab(), "Calibração")
+        tabs.addTab(VoltammogramTab(), "Voltamograma")
         tabs.addTab(PropertiesTab(), "Propriedades e Conversões")
         tabs.addTab(StatisticsTab(), "Estatística")
 
