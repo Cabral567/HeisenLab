@@ -47,7 +47,17 @@ pip install -r requirements.txt
 ```powershell
 python main.py
 ```
+## Release v1.0
 
+Foi disponibilizada a versão 1.0 do HeisenLab!
+
+O instalador está disponível como `setup.exe` na seção de releases.
+
+Para instalar:
+1. Baixe o arquivo `setup.exe`.
+2. Execute o instalador e siga as instruções na tela.
+
+Em caso de dúvidas ou problemas, consulte este README ou entre em contato pelo canal de suporte.
 ## Dependências
 
 - PySide6 (interface gráfica)
