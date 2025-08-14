@@ -20,7 +20,7 @@ Aplicativo de Química Analítica com interface gráfica para cálculos químico
 ## Instalação
 
 ### Opção 1: Instalador (Recomendado)
-Baixe e execute o instalador `HeisenLab-installer.exe` para instalação automática.
+Baixe e execute o instalador `setup.exe` para instalação automática.
 
 ### Opção 2: Build from Source
 
