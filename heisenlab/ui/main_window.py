@@ -7,6 +7,7 @@ from .calculations_tab import CalculationsTab
 from .calibration_tab import VoltammogramTab
 from .properties_tab import PropertiesTab
 from .statistics_tab import StatisticsTab
+from .chemical_draw_tab import ChemicalDrawTab
 
 
 class MainWindow(QMainWindow):
@@ -19,6 +20,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(VoltammogramTab(), "Voltamograma")
         tabs.addTab(PropertiesTab(), "Propriedades e Conversões")
         tabs.addTab(StatisticsTab(), "Estatística")
+        tabs.addTab(ChemicalDrawTab(), "Desenho Químico")
 
         self.setCentralWidget(tabs)
         self.resize(1200, 800)  # Janela maior para melhor visualização
