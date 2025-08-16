@@ -19,39 +19,74 @@ Aplicativo de Química Analítica com interface gráfica para cálculos químico
 - **Propriedades & Conversões**: Massa molar, densidade, molaridade e conversões de unidades
 - **Análise Estatística**: Estatística descritiva, intervalos de confiança, testes t e F
 
+## Exemplo - Desenho Químico
+
+<p align="center">
+  <img src="assets/image.png" alt="Exemplo de Desenho Químico no HeisenLab" width="80%">
+</p>
+
+<p align="center">
+  <em>Interface do editor de estruturas moleculares com ferramentas de desenho interativas</em>
+</p>
+
 ## Instalação
 
-**Opção 1:** Baixe e execute `setup.exe` (recomendado)
-
-**Opção 2:** Build manual:
+### Opção 1: Instalação Rápida (Recomendada)
 ```bash
+# Baixe o arquivo setup.exe e execute
+setup.exe
+```
+*Instalação automática com todas as dependências incluídas*
+
+### Opção 2: Instalação Manual
+```bash
+# 1. Clone o repositório
 git clone <repository-url>
 cd HeisenLab
+
+# 2. Crie ambiente virtual
 python -m venv .venv
+
+# 3. Ative o ambiente virtual
+# No Windows (PowerShell):
 .\.venv\Scripts\Activate.ps1
+# No Windows (CMD):
+.\.venv\Scripts\activate.bat
+# No Linux/Mac:
+source .venv/bin/activate
+
+# 4. Instale dependências
 pip install -r requirements.txt
+
+# 5. Execute a aplicação
 python main.py
 ```
 
+### Requisitos do Sistema
+- **Python**: 3.8 ou superior
+- **Sistema Operacional**: Windows 10+, Linux, macOS
+- **Memória RAM**: 4GB recomendado
+- **Espaço em disco**: 500MB livres
+
 ## Principais Recursos
 
-### 🧪 Cálculos Químicos
+### Cálculos Químicos
 Ferramentas para diluições, pH/pOH, constantes de equilíbrio e Lei de Beer-Lambert
 
-### 🔬 Tabela Periódica Interativa
+### Tabela Periódica Interativa
 - 118 elementos com interface visual moderna
 - Busca por símbolo, nome ou número atômico
 - Propriedades detalhadas e modelo atômico de Bohr
 - Cores por categoria e layout responsivo
 
-### ⚗️ Desenho Químico
+### Desenho Químico
 Editor interativo para estruturas moleculares e funções orgânicas com:
 - Ferramentas de desenho intuitivas
 - Biblioteca de grupos funcionais
 - Visualização 2D de moléculas
 - Exportação de estruturas
 
-### 📊 Análise de Dados
+### Análise de Dados
 - Importação de voltamogramas (Excel)
 - Análise estatística completa
 - Gráficos interativos e personalizáveis

@@ -12,8 +12,12 @@ scikit-image>=0.21.0
 statsmodels>=0.14.0
 peakutils>=1.3.0
 
-# Bibliotecas para desenho químico
+# Bibliotecas para desenho químico e visualização 3D
 rdkit
 Pillow
 matplotlib
 py3Dmol
+
+# Bibliotecas para visualização 3D (compatíveis com Windows)
+plotly>=5.15.0
+vispy>=0.12.0

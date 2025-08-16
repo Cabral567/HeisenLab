@@ -47,6 +47,12 @@ try:
 except ImportError:
     HAS_PEAKUTILS = False
 
+try:
+    import lmfit
+    HAS_LMFIT = True
+except ImportError:
+    HAS_LMFIT = False
+
 
 class VoltammogramTab(QWidget):
     def __init__(self, parent=None):
