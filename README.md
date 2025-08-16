@@ -12,79 +12,75 @@ Aplicativo de Química Analítica com interface gráfica para cálculos químico
 
 ## Funcionalidades
 
-- **Cálculos Químicos**: Diluição, pH/pOH, constantes de equilíbrio (Ka/Kb), Lei de Beer-Lambert
-- **Voltamograma**: Importação de dados Excel, visualização gráfica interativa
-- **Propriedades & Conversões**: Massa molar, conversões de unidades, cálculos de densidade/molaridade
-- **Estatística**: Análise descritiva, intervalos de confiança, testes t e F
+- **Cálculos Químicos**: Diluição, pH/pOH, constantes de equilíbrio, Lei de Beer-Lambert
+- **Tabela Periódica Interativa**: 118 elementos com busca, propriedades detalhadas e modelo atômico visual
+- **Desenho Químico**: Editor de estruturas moleculares e funções orgânicas interativo
+- **Voltamograma**: Importação e visualização de dados experimentais
+- **Propriedades & Conversões**: Massa molar, densidade, molaridade e conversões de unidades
+- **Análise Estatística**: Estatística descritiva, intervalos de confiança, testes t e F
 
 ## Instalação
 
-### Opção 1: Instalador (Recomendado)
-Baixe e execute o instalador `setup.exe` para instalação automática.
+**Opção 1:** Baixe e execute `setup.exe` (recomendado)
 
-### Opção 2: Build from Source
-
-**Pré-requisitos:** Python 3.8+
-
-1. Clone o repositório:
+**Opção 2:** Build manual:
 ```bash
 git clone <repository-url>
 cd HeisenLab
-```
-
-2. Crie e ative um ambiente virtual:
-```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-```
-
-3. Instale as dependências:
-```powershell
 pip install -r requirements.txt
-```
-
-4. Execute o aplicativo:
-```powershell
 python main.py
 ```
-## Release v1.0
 
-Foi disponibilizada a versão 1.0 do HeisenLab!
+## Principais Recursos
 
-O instalador está disponível como `setup.exe` na seção de releases.
+### 🧪 Cálculos Químicos
+Ferramentas para diluições, pH/pOH, constantes de equilíbrio e Lei de Beer-Lambert
 
-Para instalar:
-1. Baixe o arquivo `setup.exe`.
-2. Execute o instalador e siga as instruções na tela.
+### 🔬 Tabela Periódica Interativa
+- 118 elementos com interface visual moderna
+- Busca por símbolo, nome ou número atômico
+- Propriedades detalhadas e modelo atômico de Bohr
+- Cores por categoria e layout responsivo
 
-Em caso de dúvidas ou problemas, consulte este README ou entre em contato pelo canal de suporte.
+### ⚗️ Desenho Químico
+Editor interativo para estruturas moleculares e funções orgânicas com:
+- Ferramentas de desenho intuitivas
+- Biblioteca de grupos funcionais
+- Visualização 2D de moléculas
+- Exportação de estruturas
+
+### 📊 Análise de Dados
+- Importação de voltamogramas (Excel)
+- Análise estatística completa
+- Gráficos interativos e personalizáveis
+
 ## Dependências
 
-- PySide6 (interface gráfica)
-- matplotlib (gráficos)
-- numpy, pandas (cálculos e dados)
-- openpyxl (arquivos Excel)
+PySide6 • matplotlib • numpy • pandas • openpyxl
 
-## Estrutura do Projeto
+## Estrutura Principal
 
 ```
 HeisenLab/
-├── main.py                    # Ponto de entrada
-├── requirements.txt           # Dependências
-└── heisenlab/                 # Pacote principal
-    ├── calculations.py        # Cálculos químicos
-    ├── plotting.py           # Funções de plotagem
-    └── ui/                   # Interface gráfica
-        ├── main_window.py    # Janela principal
-        ├── calculations_tab.py
-        ├── calibration_tab.py
-        ├── properties_tab.py
-        └── statistics_tab.py
+├── main.py                           # Aplicação principal
+├── requirements.txt                  # Dependências
+└── heisenlab/
+    ├── calculations.py              # Cálculos químicos
+    ├── plotting.py                  # Visualizações
+    └── ui/                          # Interface gráfica
+        ├── main_window.py           # Janela principal
+        ├── calculations_tab.py      # Cálculos
+        ├── periodic_table_tab_final.py  # Tabela periódica
+        ├── chemical_draw_tab.py     # Desenho químico
+        ├── calibration_tab.py       # Voltamogramas
+        ├── properties_tab.py        # Propriedades
+        └── statistics_tab.py        # Estatística
 ```
 
 ## Autores
 
-- **Lucas Cabral** - lucascabralp567@gmail.com
-- **Artur Cesar**
+**Lucas Cabral** • **Artur Cesar**
 
-Desenvolvido para o laboratório de química Analítica da Universidade Federal Fluminense (UFF).
+Laboratório de Química Analítica - Universidade Federal Fluminense (UFF)
