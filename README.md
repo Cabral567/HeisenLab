@@ -116,6 +116,7 @@ HeisenLab/
 
 ## Autores
 
-**Lucas Cabral** • **Artur Cesar**
+**Lucas Cabral** - lucascabralp567@gmail.com
+**Artur Cesar** - cesarr7907@gmail.com
 
 Laboratório de Química Analítica - Universidade Federal Fluminense (UFF)
