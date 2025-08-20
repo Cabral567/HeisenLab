@@ -9,6 +9,7 @@ from .properties_tab import PropertiesTab
 from .statistics_tab import StatisticsTab
 from .chemical_draw_tab import ChemicalDrawTab
 from .periodic_table_tab_final import PeriodicTableTabFinal
+from .equations_tab import EquationsTab
 
 
 class MainWindow(QMainWindow):
@@ -23,6 +24,7 @@ class MainWindow(QMainWindow):
         tabs.addTab(StatisticsTab(), "Estatística")
         tabs.addTab(ChemicalDrawTab(), "Desenho Químico")
         tabs.addTab(PeriodicTableTabFinal(), "Tabela Periódica")
+        tabs.addTab(EquationsTab(), "Equações")
 
         self.setCentralWidget(tabs)
         self.resize(1200, 800)  # Janela maior para melhor visualização

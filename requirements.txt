@@ -17,6 +17,7 @@ rdkit
 Pillow
 matplotlib
 py3Dmol
+chempy
 
 # Bibliotecas para visualização 3D (compatíveis com Windows)
 plotly>=5.15.0

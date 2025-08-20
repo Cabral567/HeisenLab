@@ -13,6 +13,7 @@ Aplicativo de Química Analítica com interface gráfica para cálculos químico
 ## Funcionalidades
 
 - **Cálculos Químicos**: Diluição, pH/pOH, constantes de equilíbrio, Lei de Beer-Lambert
+- **Balanceamento de Equações**: Ferramenta automática para balancear equações químicas com renderização LaTeX
 - **Tabela Periódica Interativa**: 118 elementos com busca, propriedades detalhadas e modelo atômico visual
 - **Desenho Químico**: Editor de estruturas moleculares e funções orgânicas interativo
 - **Voltamograma**: Importação e visualização de dados experimentais
@@ -73,6 +74,15 @@ python main.py
 ### Cálculos Químicos
 Ferramentas para diluições, pH/pOH, constantes de equilíbrio e Lei de Beer-Lambert
 
+### Balanceamento de Equações Químicas
+Ferramenta avançada para balanceamento automático de equações químicas:
+- Interface intuitiva para entrada de equações completas
+- Balanceamento automático usando algoritmos ChemPy
+- Renderização LaTeX para visualização profissional das equações
+- Coeficientes estequiométricos detalhados
+- Exemplos pré-definidos para facilitar o uso
+- Validação de sintaxe com mensagens de erro educativas
+
 ### Tabela Periódica Interativa
 - 118 elementos com interface visual moderna
 - Busca por símbolo, nome ou número atômico
@@ -93,7 +103,7 @@ Editor interativo para estruturas moleculares e funções orgânicas com:
 
 ## Dependências
 
-PySide6 • matplotlib • numpy • pandas • openpyxl
+PySide6 • matplotlib • numpy • pandas • openpyxl • chempy
 
 ## Estrutura Principal
 
@@ -107,6 +117,7 @@ HeisenLab/
     └── ui/                          # Interface gráfica
         ├── main_window.py           # Janela principal
         ├── calculations_tab.py      # Cálculos
+        ├── equations_tab.py         # Balanceamento de equações
         ├── periodic_table_tab_final.py  # Tabela periódica
         ├── chemical_draw_tab.py     # Desenho químico
         ├── calibration_tab.py       # Voltamogramas
