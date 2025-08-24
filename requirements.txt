@@ -22,3 +22,9 @@ chempy
 # Bibliotecas para visualização 3D (compatíveis com Windows)
 plotly>=5.15.0
 vispy>=0.12.0
+
+
+# Bibliotecas da Química em si
+mendeleev>=0.13.0
+
+

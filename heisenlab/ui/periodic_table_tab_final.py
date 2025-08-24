@@ -34,107 +34,80 @@ except ImportError:
     FigureCanvas = QWidget  # Fallback
 
 def get_element_data(atomic_number):
-    """Obtém dados do elemento usando Mendeleev ou dados de fallback"""
-    if HAS_MENDELEEV:
+    """Obtém dados do elemento usando Mendeleev"""
+    if not HAS_MENDELEEV:
+        print("Biblioteca Mendeleev não disponível!")
+        return None
+        
+    try:
+        elem = element(atomic_number)
+        
+        # Tratar oxidation_states de forma segura
+        oxidation_states = []
         try:
-            elem = element(atomic_number)
-            
-            # Tratar oxidation_states especialmente
-            oxidation_states = getattr(elem, 'oxidation_states', None)
-            if oxidation_states and hasattr(oxidation_states, '__call__'):
-                # Se for um método, chama ele
-                try:
-                    oxidation_states = oxidation_states()
-                except:
-                    oxidation_states = None
-            elif oxidation_states and hasattr(oxidation_states, '__iter__'):
-                # Se for iterável, converte para lista
-                try:
-                    oxidation_states = list(oxidation_states)
-                except:
-                    oxidation_states = None
-            
-            return {
-                'symbol': elem.symbol,
-                'name': elem.name,
-                'mass': round(elem.atomic_weight or 0, 3),
-                'electrons': elem.atomic_number,
-                'period': elem.period,
-                'group': elem.group,
-                'block': getattr(elem, 'block', ''),
-                'density': getattr(elem, 'density', None),
-                'melting_point': getattr(elem, 'melting_point', None),
-                'boiling_point': getattr(elem, 'boiling_point', None),
-                'electron_configuration': getattr(elem, 'electron_configuration', ''),
-                'atomic_radius': getattr(elem, 'atomic_radius', None),
-                'covalent_radius': getattr(elem, 'covalent_radius', None),
-                'electronegativity': getattr(elem, 'electronegativity', None),
-                'ionization_energy': getattr(elem, 'ionization_energy', None),
-                'electron_affinity': getattr(elem, 'electron_affinity', None),
-                'oxidation_states': oxidation_states,
-                'discovered': getattr(elem, 'discovered', None),
-                'discoverer': getattr(elem, 'discoverers', None),
-                'crystal_structure': getattr(elem, 'crystal_structure', None),
-                'thermal_conductivity': getattr(elem, 'thermal_conductivity', None),
-                'electrical_resistivity': getattr(elem, 'electrical_resistivity', None),
-                'magnetic_susceptibility': getattr(elem, 'magnetic_susceptibility', None),
-                'abundance_crust': getattr(elem, 'abundance_crust', None),
-                'abundance_sea': getattr(elem, 'abundance_sea', None),
-                'vdw_radius': getattr(elem, 'vdw_radius', None),
-                'metallic_radius': getattr(elem, 'metallic_radius', None)
-            }
-        except Exception as e:
-            print(f"Erro ao obter dados do elemento {atomic_number}: {e}")
-            pass
-    
-    # Dados de fallback para os primeiros 118 elementos
-    fallback_data = {
-        1: {'symbol': 'H', 'name': 'Hidrogênio', 'mass': 1.008, 'period': 1, 'group': 1, 'block': 's'},
-        2: {'symbol': 'He', 'name': 'Hélio', 'mass': 4.003, 'period': 1, 'group': 18, 'block': 's'},
-        3: {'symbol': 'Li', 'name': 'Lítio', 'mass': 6.94, 'period': 2, 'group': 1, 'block': 's'},
-        4: {'symbol': 'Be', 'name': 'Berílio', 'mass': 9.012, 'period': 2, 'group': 2, 'block': 's'},
-        5: {'symbol': 'B', 'name': 'Boro', 'mass': 10.81, 'period': 2, 'group': 13, 'block': 'p'},
-        6: {'symbol': 'C', 'name': 'Carbono', 'mass': 12.01, 'period': 2, 'group': 14, 'block': 'p'},
-        7: {'symbol': 'N', 'name': 'Nitrogênio', 'mass': 14.01, 'period': 2, 'group': 15, 'block': 'p'},
-        8: {'symbol': 'O', 'name': 'Oxigênio', 'mass': 16.00, 'period': 2, 'group': 16, 'block': 'p'},
-        9: {'symbol': 'F', 'name': 'Flúor', 'mass': 19.00, 'period': 2, 'group': 17, 'block': 'p'},
-        10: {'symbol': 'Ne', 'name': 'Neônio', 'mass': 20.18, 'period': 2, 'group': 18, 'block': 'p'},
-        11: {'symbol': 'Na', 'name': 'Sódio', 'mass': 22.99, 'period': 3, 'group': 1, 'block': 's'},
-        12: {'symbol': 'Mg', 'name': 'Magnésio', 'mass': 24.31, 'period': 3, 'group': 2, 'block': 's'},
-        13: {'symbol': 'Al', 'name': 'Alumínio', 'mass': 26.98, 'period': 3, 'group': 13, 'block': 'p'},
-        14: {'symbol': 'Si', 'name': 'Silício', 'mass': 28.09, 'period': 3, 'group': 14, 'block': 'p'},
-        15: {'symbol': 'P', 'name': 'Fósforo', 'mass': 30.97, 'period': 3, 'group': 15, 'block': 'p'},
-        16: {'symbol': 'S', 'name': 'Enxofre', 'mass': 32.07, 'period': 3, 'group': 16, 'block': 'p'},
-        17: {'symbol': 'Cl', 'name': 'Cloro', 'mass': 35.45, 'period': 3, 'group': 17, 'block': 'p'},
-        18: {'symbol': 'Ar', 'name': 'Argônio', 'mass': 39.95, 'period': 3, 'group': 18, 'block': 'p'},
-        19: {'symbol': 'K', 'name': 'Potássio', 'mass': 39.10, 'period': 4, 'group': 1, 'block': 's'},
-        20: {'symbol': 'Ca', 'name': 'Cálcio', 'mass': 40.08, 'period': 4, 'group': 2, 'block': 's'},
-        # Metais de transição período 4
-        21: {'symbol': 'Sc', 'name': 'Escândio', 'mass': 44.96, 'period': 4, 'group': 3, 'block': 'd'},
-        22: {'symbol': 'Ti', 'name': 'Titânio', 'mass': 47.87, 'period': 4, 'group': 4, 'block': 'd'},
-        23: {'symbol': 'V', 'name': 'Vanádio', 'mass': 50.94, 'period': 4, 'group': 5, 'block': 'd'},
-        24: {'symbol': 'Cr', 'name': 'Cromo', 'mass': 51.99, 'period': 4, 'group': 6, 'block': 'd'},
-        25: {'symbol': 'Mn', 'name': 'Manganês', 'mass': 54.94, 'period': 4, 'group': 7, 'block': 'd'},
-        26: {'symbol': 'Fe', 'name': 'Ferro', 'mass': 55.85, 'period': 4, 'group': 8, 'block': 'd'},
-        27: {'symbol': 'Co', 'name': 'Cobalto', 'mass': 58.93, 'period': 4, 'group': 9, 'block': 'd'},
-        28: {'symbol': 'Ni', 'name': 'Níquel', 'mass': 58.69, 'period': 4, 'group': 10, 'block': 'd'},
-        29: {'symbol': 'Cu', 'name': 'Cobre', 'mass': 63.55, 'period': 4, 'group': 11, 'block': 'd'},
-        30: {'symbol': 'Zn', 'name': 'Zinco', 'mass': 65.38, 'period': 4, 'group': 12, 'block': 'd'},
-        # Continuação período 4
-        31: {'symbol': 'Ga', 'name': 'Gálio', 'mass': 69.72, 'period': 4, 'group': 13, 'block': 'p'},
-        32: {'symbol': 'Ge', 'name': 'Germânio', 'mass': 72.63, 'period': 4, 'group': 14, 'block': 'p'},
-        33: {'symbol': 'As', 'name': 'Arsênio', 'mass': 74.92, 'period': 4, 'group': 15, 'block': 'p'},
-        34: {'symbol': 'Se', 'name': 'Selênio', 'mass': 78.97, 'period': 4, 'group': 16, 'block': 'p'},
-        35: {'symbol': 'Br', 'name': 'Bromo', 'mass': 79.90, 'period': 4, 'group': 17, 'block': 'p'},
-        36: {'symbol': 'Kr', 'name': 'Criptônio', 'mass': 83.80, 'period': 4, 'group': 18, 'block': 'p'},
-    }
-    
-    if atomic_number in fallback_data:
-        data = fallback_data[atomic_number].copy()
-        data['electrons'] = atomic_number
-        return data
-    
-    return None
+            if hasattr(elem, 'oxidation_states') and elem.oxidation_states:
+                oxidation_states = list(elem.oxidation_states)
+        except:
+            oxidation_states = []
+        
+        # Tratar eletronegatividade (Pauling scale)
+        electronegativity = None
+        try:
+            if hasattr(elem, 'electronegativity'):
+                if callable(elem.electronegativity):
+                    electronegativity = elem.electronegativity('pauling')
+                else:
+                    electronegativity = elem.electronegativity
+        except:
+            electronegativity = None
+        
+        # Tratar energias de ionização
+        ionization_energies = []
+        try:
+            if hasattr(elem, 'ionization_energies') and elem.ionization_energies:
+                # Pega as primeiras 3 energias de ionização
+                for ie in elem.ionization_energies[:3]:
+                    if hasattr(ie, 'energy'):
+                        ionization_energies.append(ie.energy)
+                    else:
+                        ionization_energies.append(ie)
+        except:
+            ionization_energies = []
+        
+        return {
+            'symbol': elem.symbol,
+            'name': elem.name,
+            'mass': round(elem.atomic_weight or 0, 3),
+            'electrons': elem.atomic_number,
+            'period': elem.period,
+            'group': getattr(elem, 'group_id', None),
+            'block': getattr(elem, 'block', ''),
+            'density': getattr(elem, 'density', None),
+            'melting_point': getattr(elem, 'melting_point', None),
+            'boiling_point': getattr(elem, 'boiling_point', None),
+            'electron_configuration': getattr(elem, 'electron_configuration', ''),
+            'atomic_radius': getattr(elem, 'atomic_radius', None),
+            'covalent_radius': getattr(elem, 'covalent_radius', None),
+            'electronegativity': electronegativity,
+            'ionization_energies': ionization_energies,
+            'electron_affinity': getattr(elem, 'electron_affinity', None),
+            'oxidation_states': oxidation_states,
+            'discovery_year': getattr(elem, 'discovery_year', None),
+            'discoverers': getattr(elem, 'discoverers', None),
+            'crystal_structure': getattr(elem, 'crystal_structure', None),
+            'thermal_conductivity': getattr(elem, 'thermal_conductivity', None),
+            'electrical_resistivity': getattr(elem, 'electrical_resistivity', None),
+            'specific_heat': getattr(elem, 'specific_heat', None),
+            'abundance_crust': getattr(elem, 'abundance_crust', None),
+            'abundance_sea': getattr(elem, 'abundance_sea', None),
+            'vdw_radius': getattr(elem, 'vdw_radius', None),
+            'metallic_radius': getattr(elem, 'metallic_radius', None),
+            'is_radioactive': getattr(elem, 'is_radioactive', False),
+            'ground_state_term_symbol': getattr(elem, 'ground_state_term_symbol', None)
+        }
+    except Exception as e:
+        print(f"Erro ao obter dados do elemento {atomic_number}: {e}")
+        return None
 
 def get_electron_configuration(atomic_number):
     """Calcula configuração eletrônica simplificada"""
@@ -413,7 +386,6 @@ class PeriodicTableTabFinal(QWidget):
         self.boiling_point_label = None
         self.density_label = None
         self.bohr_canvas = None
-        self.atom_3d_canvas = None
         
         self.init_ui()
     
@@ -455,8 +427,8 @@ class PeriodicTableTabFinal(QWidget):
         # === ABA 2: PROPRIEDADES DETALHADAS ===
         properties_tab = QWidget()
         properties_layout = QVBoxLayout()
-        properties_layout.setSpacing(5)
-        properties_layout.setContentsMargins(5, 5, 5, 5)
+        properties_layout.setSpacing(0)
+        properties_layout.setContentsMargins(0, 0, 0, 0)
         
         detailed_props_group = self.create_detailed_properties_section()
         properties_layout.addWidget(detailed_props_group)
@@ -486,28 +458,6 @@ class PeriodicTableTabFinal(QWidget):
         viz_2d_tab.setLayout(viz_2d_layout)
         main_tabs.addTab(viz_2d_tab, "Bohr 2D")
         
-        # === ABA 4: VISUALIZAÇÃO 3D ===
-        viz_3d_tab = QWidget()
-        viz_3d_layout = QVBoxLayout()
-        viz_3d_layout.setSpacing(5)
-        viz_3d_layout.setContentsMargins(5, 5, 5, 5)
-        
-        # Widget 3D direto, sem GroupBox extra
-        self.atom_3d_widget = Atom3DWidget()
-        self.atom_3d_widget.setMinimumSize(400, 300)  # Tamanho mínimo em vez de fixo
-        
-        # Centralizar o widget
-        viz_3d_container = QWidget()
-        viz_3d_container_layout = QHBoxLayout()
-        viz_3d_container_layout.addStretch()
-        viz_3d_container_layout.addWidget(self.atom_3d_widget)
-        viz_3d_container_layout.addStretch()
-        viz_3d_container.setLayout(viz_3d_container_layout)
-        
-        viz_3d_layout.addWidget(viz_3d_container)
-        viz_3d_tab.setLayout(viz_3d_layout)
-        main_tabs.addTab(viz_3d_tab, "3D")
-        
         # CRÍTICO: Adicionar as tabs ao layout principal
         layout.addWidget(main_tabs)
         self.setLayout(layout)
@@ -520,7 +470,7 @@ class PeriodicTableTabFinal(QWidget):
         print(f"Labels de propriedades criadas: {self.electron_config_label is not None}")  # Debug
         
         # Aguarda um momento para garantir que todas as abas foram criadas
-        QTimer.singleShot(100, lambda: self.select_element(1))  # Hidrogênio
+        QTimer.singleShot(100, lambda: self.select_element(6))  # Carbono como exemplo
         
     def create_periodic_table(self):
         """Cria a seção da tabela periódica seguindo exatamente o padrão das outras abas"""
@@ -533,8 +483,8 @@ class PeriodicTableTabFinal(QWidget):
         # Grid da tabela com layout correto da tabela periódica
         grid_widget = QWidget()
         self.grid = QGridLayout()
-        self.grid.setSpacing(2)  # Espaçamento pequeno como na imagem
-        self.grid.setContentsMargins(5, 5, 5, 5)  # Margens pequenas
+        self.grid.setSpacing(1)  # Espaçamento mínimo como na imagem
+        self.grid.setContentsMargins(2, 2, 2, 2)  # Margens mínimas
         
         # Criar elementos da tabela periódica
         self.create_element_buttons()
@@ -545,7 +495,7 @@ class PeriodicTableTabFinal(QWidget):
         table_scroll = QScrollArea()
         table_scroll.setWidget(grid_widget)
         table_scroll.setWidgetResizable(True)
-        table_scroll.setMinimumHeight(280)  # Altura mínima ajustada
+        table_scroll.setMinimumHeight(420)  # Altura ajustada para mostrar todos os elementos
         table_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         table_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         
@@ -554,10 +504,13 @@ class PeriodicTableTabFinal(QWidget):
         return group
     
     def create_element_buttons(self):
-        """Cria os botões dos elementos da tabela periódica"""
+        """Cria os botões dos elementos da tabela periódica exatamente como na imagem"""
         print("Criando botões dos elementos...")  # Debug
-        
-        # Layouts por períodos seguindo a referência correta
+
+        # Lista para armazenar apenas os botões de elementos
+        self.element_buttons = []
+
+        # Layout correto da tabela periódica baseado na imagem
         period_layouts = {
             1: [(0, 0, 1), (0, 17, 2)],  # H, He
             2: [(1, 0, 3), (1, 1, 4), (1, 12, 5), (1, 13, 6), (1, 14, 7), (1, 15, 8), (1, 16, 9), (1, 17, 10)],  # Li-Ne
@@ -570,17 +523,17 @@ class PeriodicTableTabFinal(QWidget):
                 (4, 14, 51), (4, 15, 52), (4, 16, 53), (4, 17, 54)],  # Rb-Xe
             6: [(5, 0, 55), (5, 1, 56), (5, 2, 57), (5, 3, 72), (5, 4, 73), (5, 5, 74), (5, 6, 75), (5, 7, 76), 
                 (5, 8, 77), (5, 9, 78), (5, 10, 79), (5, 11, 80), (5, 12, 81), (5, 13, 82), (5, 14, 83), 
-                (5, 15, 84), (5, 16, 85), (5, 17, 86)],  # Cs-Rn (Po no grupo 16, At no grupo 17)
+                (5, 15, 84), (5, 16, 85), (5, 17, 86)],  # Cs-Rn
             7: [(6, 0, 87), (6, 1, 88), (6, 2, 89), (6, 3, 104), (6, 4, 105), (6, 5, 106), (6, 6, 107), (6, 7, 108), 
                 (6, 8, 109), (6, 9, 110), (6, 10, 111), (6, 11, 112), (6, 12, 113), (6, 13, 114), (6, 14, 115), 
-                (6, 15, 116), (6, 16, 117), (6, 17, 118)]  # Fr-Og (Ac no lugar correto)
+                (6, 15, 116), (6, 16, 117), (6, 17, 118)]  # Fr-Og
         }
         
-        # Lantanídeos (separados embaixo) - Período 8, centralizados
-        lanthanides = [(8, i+2, 58+i) for i in range(14)]  # Ce-Lu (58-71), começando na coluna 2
+        # Lantanídeos (período 8) - incluindo La (57) 
+        lanthanides = [(8, i+2, 57+i) for i in range(15)]  # La-Lu (57-71)
         
-        # Actinídeos (separados embaixo) - Período 9, centralizados  
-        actinides = [(9, i+2, 90+i) for i in range(14)]    # Th-Lr (90-103), começando na coluna 2
+        # Actinídeos (período 9) - incluindo Ac (89)
+        actinides = [(9, i+2, 89+i) for i in range(15)]    # Ac-Lr (89-103)
         
         # Criar todos os elementos
         all_positions = []
@@ -594,29 +547,31 @@ class PeriodicTableTabFinal(QWidget):
             element_data = get_element_data(atomic_num)
             if element_data:
                 btn = QPushButton()
-                btn.setMinimumSize(40, 40)  # Tamanho único padronizado
-                btn.setMaximumSize(40, 40)
+                btn.setMinimumSize(45, 45)  # Aumentado um pouco para melhor legibilidade
+                btn.setMaximumSize(45, 45)
                 
                 # Texto do botão: número atômico + símbolo (como na imagem)
                 btn.setText(f"{atomic_num}\n{element_data['symbol']}")
                 
                 # Aplicar estilo mais parecido com a imagem
+                color = self.get_element_color(element_data)
+                hover_color = self.lighten_color(color)
+                
                 btn.setStyleSheet(f"""
                     QPushButton {{
-                        background-color: {self.get_element_color(element_data)};
+                        background-color: {color};
                         color: white;
-                        font-size: 9px;
+                        font-size: 10px;
                         font-weight: bold;
-                        border: 1px solid #333333;
-                        border-radius: 3px;
+                        border: 1px solid #555555;
+                        border-radius: 4px;
                         text-align: center;
-                        padding: 2px;
+                        padding: 1px;
                         margin: 0px;
                     }}
                     QPushButton:hover {{
                         border: 2px solid #ffffff;
-                        background-color: {self.get_element_color(element_data, hover=True)};
-                        transform: scale(1.05);
+                        background-color: {hover_color};
                     }}
                     QPushButton:pressed {{
                         background-color: #2c3e50;
@@ -634,8 +589,21 @@ class PeriodicTableTabFinal(QWidget):
                 # Conectar clique
                 btn.clicked.connect(lambda checked, num=atomic_num: self.select_element(num))
                 
+                # Tooltip com informações completas
+                btn.setToolTip(f"{element_data['name']} ({element_data['symbol']})\n"
+                              f"Número Atômico: {atomic_num}\n"
+                              f"Massa: {element_data['mass']} u\n"
+                              f"Bloco: {element_data.get('block', 'N/A')}\n"
+                              f"Período: {element_data.get('period', 'N/A')}\n"
+                              f"Grupo: {element_data.get('group', 'N/A')}")
+                
+                # Adicionar referência aos dados do elemento para facilitar busca e filtros
+                btn.element_data = element_data
+                btn.atomic_number = atomic_num
+                
                 # Adicionar ao grid
                 self.grid.addWidget(btn, row, col)
+                self.element_buttons.append(btn)
                 created_count += 1
             else:
                 print(f"Dados não encontrados para elemento {atomic_num}")  # Debug
@@ -646,7 +614,7 @@ class PeriodicTableTabFinal(QWidget):
         self.add_series_labels()
     
     def add_series_labels(self):
-        """Adiciona labels 57-71 e 89-103 nas posições originais"""
+        """Adiciona labels para lantanídeos e actinídeos nas posições originais"""
         # Label para lantanídeos (posição do La original no período 6, coluna 2)
         lanthanides_label = QLabel("57-71")
         lanthanides_label.setAlignment(Qt.AlignCenter)
@@ -655,13 +623,13 @@ class PeriodicTableTabFinal(QWidget):
                 background-color: #BDC3C7;
                 color: #2C3E50;
                 border: 1px solid #95A5A6;
-                border-radius: 3px;
+                border-radius: 4px;
                 font-size: 8px;
                 font-weight: bold;
                 padding: 2px;
             }
         """)
-        lanthanides_label.setFixedSize(40, 40)
+        lanthanides_label.setFixedSize(45, 45)
         self.grid.addWidget(lanthanides_label, 5, 2)  # Posição do La
         
         # Label para actinídeos (posição do Ac original no período 7, coluna 2)  
@@ -672,13 +640,13 @@ class PeriodicTableTabFinal(QWidget):
                 background-color: #BDC3C7;
                 color: #2C3E50;
                 border: 1px solid #95A5A6;
-                border-radius: 3px;
+                border-radius: 4px;
                 font-size: 8px;
                 font-weight: bold;
                 padding: 2px;
             }
         """)
-        actinides_label.setFixedSize(40, 40)
+        actinides_label.setFixedSize(45, 45)
         self.grid.addWidget(actinides_label, 6, 2)  # Posição do Ac
     
     def create_color_legend(self):
@@ -791,30 +759,51 @@ class PeriodicTableTabFinal(QWidget):
     
     def search_elements(self, text):
         """Busca elementos por nome ou símbolo"""
-        if not hasattr(self, 'grid'):
+        if not hasattr(self, 'element_buttons'):
             return
-            
+
         text = text.lower().strip()
-        
-        # Percorre todos os widgets do grid
-        for i in range(self.grid.count()):
-            widget = self.grid.itemAt(i).widget()
-            if isinstance(widget, QPushButton):
-                # Pega informações do elemento do tooltip
-                tooltip = widget.toolTip()
+
+        # Percorre apenas os botões de elementos
+        for widget in self.element_buttons:
+            tooltip = widget.toolTip()
+            button_text = widget.text().lower()
+
+            should_show = True
+
+            if text != "":
+                should_show = False
+                
+                # Verifica se o texto está no tooltip
                 if tooltip:
                     lines = tooltip.split('\n')
-                    element_name = lines[0].split(' (')[0].lower()  # Nome do elemento
-                    element_symbol = lines[0].split('(')[1].split(')')[0].lower()  # Símbolo
-                    
-                    # Verifica se o texto de busca está no nome ou símbolo
-                    if text == "" or text in element_name or text in element_symbol:
-                        widget.setVisible(True)
-                        widget.setStyleSheet(widget.styleSheet().replace("opacity: 0.3;", ""))
-                    else:
-                        widget.setVisible(True)  # Mantém visível mas com opacidade
-                        if "opacity: 0.3;" not in widget.styleSheet():
-                            widget.setStyleSheet(widget.styleSheet().replace("}", "opacity: 0.3;}"))
+                    if len(lines) > 0:
+                        # Extrai nome e símbolo da primeira linha do tooltip
+                        first_line = lines[0].lower()
+                        # Formato esperado: "Nome (Símbolo)"
+                        if '(' in first_line and ')' in first_line:
+                            element_name = first_line.split(' (')[0].strip().lower()
+                            element_symbol = first_line.split('(')[1].split(')')[0].strip().lower()
+                            
+                            # Verifica se o texto de busca está no nome ou símbolo
+                            if (text in element_name or 
+                                text in element_symbol or 
+                                text in button_text):
+                                should_show = True
+                
+                # Também verifica no texto do botão (número + símbolo)
+                if text in button_text:
+                    should_show = True
+
+            # Aplica a visibilidade
+            widget.setVisible(should_show)
+
+    def keyPressEvent(self, event):
+        """Permite pesquisar ao pressionar Enter no campo de busca"""
+        if hasattr(self, 'search_input') and self.search_input.hasFocus():
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                self.search_elements(self.search_input.text())
+        super().keyPressEvent(event)
     
     def filter_by_block(self, block):
         """Filtra elementos por bloco"""
@@ -850,32 +839,114 @@ class PeriodicTableTabFinal(QWidget):
             return
             
         for i in range(self.grid.count()):
-            widget = self.grid.itemAt(i).widget()
+            item = self.grid.itemAt(i)
+            if item is None:
+                continue
+                
+            widget = item.widget()
             if isinstance(widget, QPushButton):
                 widget.setVisible(True)
-                widget.setStyleSheet(widget.styleSheet().replace("opacity: 0.3;", ""))
+                current_style = widget.styleSheet()
+                if "opacity: 0.3" in current_style:
+                    new_style = current_style.replace("opacity: 0.3;", "")
+                    widget.setStyleSheet(new_style)
     
     def apply_block_filter(self, block):
         """Aplica filtro visual por bloco"""
+        if not hasattr(self, 'grid'):
+            return
+            
         for i in range(self.grid.count()):
-            widget = self.grid.itemAt(i).widget()
-            if isinstance(widget, QPushButton) and hasattr(widget, 'element_data'):
-                element_block = widget.element_data.get('block', '').lower()
-                if element_block == block:
-                    widget.setStyleSheet(widget.styleSheet().replace("opacity: 0.3;", ""))
-                else:
-                    if "opacity: 0.3;" not in widget.styleSheet():
-                        widget.setStyleSheet(widget.styleSheet().replace("}", "opacity: 0.3;}"))
+            item = self.grid.itemAt(i)
+            if item is None:
+                continue
+                
+            widget = item.widget()
+            if isinstance(widget, QPushButton):
+                # Extrai número atômico do texto do botão
+                button_text = widget.text()
+                if button_text and '\n' in button_text:
+                    try:
+                        atomic_num = int(button_text.split('\n')[0])
+                        element_data = get_element_data(atomic_num)
+                        
+                        if element_data:
+                            element_block = element_data.get('block', '').lower()
+                            
+                            if element_block == block:
+                                # Mostrar elemento
+                                current_style = widget.styleSheet()
+                                if "opacity: 0.3" in current_style:
+                                    new_style = current_style.replace("opacity: 0.3;", "")
+                                    widget.setStyleSheet(new_style)
+                            else:
+                                # Escurecer elemento
+                                current_style = widget.styleSheet()
+                                if "opacity: 0.3" not in current_style:
+                                    if current_style.endswith("}"):
+                                        new_style = current_style[:-1] + "opacity: 0.3;}"
+                                    else:
+                                        new_style = current_style + "opacity: 0.3;"
+                                    widget.setStyleSheet(new_style)
+                    except (ValueError, IndexError):
+                        continue
     
     def apply_state_filter(self, state):
-        """Aplica filtro visual por estado"""
-        # Implementação básica - pode ser expandida com dados de estado físico
-        pass
+        """Aplica filtro visual por estado físico usando dados do Mendeleev"""
+        if not hasattr(self, 'grid') or not HAS_MENDELEEV:
+            return
+            
+        for i in range(self.grid.count()):
+            item = self.grid.itemAt(i)
+            if item is None:
+                continue
+                
+            widget = item.widget()
+            if isinstance(widget, QPushButton):
+                # Extrai número atômico do texto do botão
+                button_text = widget.text()
+                if button_text and '\n' in button_text:
+                    try:
+                        atomic_num = int(button_text.split('\n')[0])
+                        element_data = get_element_data(atomic_num)
+                        
+                        if element_data:
+                            # Determinar estado baseado em propriedades do Mendeleev
+                            melting_point = element_data.get('melting_point')
+                            boiling_point = element_data.get('boiling_point')
+                            
+                            element_state = "Desconhecido"
+                            if melting_point and boiling_point:
+                                if melting_point > 298:  # > 25°C
+                                    element_state = "Sólido"
+                                elif boiling_point < 298:  # < 25°C
+                                    element_state = "Gasoso"
+                                else:
+                                    element_state = "Líquido"
+                            elif atomic_num >= 93:  # Elementos sintéticos
+                                element_state = "Sintético"
+                            
+                            if element_state == state or state == "Todos":
+                                # Mostrar elemento
+                                current_style = widget.styleSheet()
+                                if "opacity: 0.3" in current_style:
+                                    new_style = current_style.replace("opacity: 0.3;", "")
+                                    widget.setStyleSheet(new_style)
+                            else:
+                                # Escurecer elemento
+                                current_style = widget.styleSheet()
+                                if "opacity: 0.3" not in current_style:
+                                    if current_style.endswith("}"):
+                                        new_style = current_style[:-1] + "opacity: 0.3;}"
+                                    else:
+                                        new_style = current_style + "opacity: 0.3;"
+                                    widget.setStyleSheet(new_style)
+                    except (ValueError, IndexError):
+                        continue
     
     def create_basic_element_info(self):
         """Cria a seção de informações básicas do elemento"""
         group = QGroupBox("Informações do Elemento")
-        # Removido setMaximumHeight para permitir expansão
         group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
@@ -899,7 +970,9 @@ class PeriodicTableTabFinal(QWidget):
         col1_layout = QFormLayout()
         col1_layout.setSpacing(4)
         
-        self.name_label = QLabel("-")
+        # Inicializar labels com valores padrão e estilo
+        self.name_label = QLabel("Clique em um elemento")
+        self.name_label.setStyleSheet("font-weight: bold; color: #2E86C1;")
         self.symbol_label = QLabel("-")
         self.atomic_number_label = QLabel("-")
         self.period_label = QLabel("-")
@@ -927,18 +1000,46 @@ class PeriodicTableTabFinal(QWidget):
         main_layout.addLayout(col2_layout)
         
         group.setLayout(main_layout)
+        
+        # DEBUG: Confirmar que as labels foram criadas
+        print(f"Labels básicas criadas: {self.name_label is not None}")
         return group
 
     def create_detailed_properties_section(self):
-        """Cria a seção de propriedades detalhadas"""
-        group = QGroupBox("Propriedades Físicas e Químicas")
-        group.setStyleSheet("""
+        """Cria a seção de propriedades detalhadas seguindo o padrão da aba de exemplo"""
+        main_widget = QWidget()
+        main_widget.setStyleSheet("background-color: #3c3c3c;")
+        
+        # Layout principal horizontal (controles à esquerda, visualização à direita)
+        main_layout = QHBoxLayout()
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # === PAINEL DE CONTROLES À ESQUERDA ===
+        controls_panel = QWidget()
+        controls_panel.setFixedWidth(400)
+        controls_panel.setStyleSheet("""
+            QWidget {
+                background-color: #2c2c2c;
+                padding: 5px;
+            }
+        """)
+        
+        controls_layout = QVBoxLayout()
+        controls_layout.setSpacing(15)
+        controls_layout.setContentsMargins(15, 15, 15, 15)
+        
+        # === PROPRIEDADES BÁSICAS ===
+        basic_group = QGroupBox("Propriedades Básicas")
+        basic_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 2px solid #cccccc;
+                font-size: 13px;
+                color: #e67e22;
+                border: 1px solid #555;
                 border-radius: 5px;
-                margin-top: 1ex;
-                padding: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -947,535 +1048,367 @@ class PeriodicTableTabFinal(QWidget):
             }
         """)
         
-        layout = QFormLayout()
-        layout.setSpacing(6)  # Reduzido de 8
+        basic_layout = QFormLayout()
+        basic_layout.setSpacing(8)
+        basic_layout.setLabelAlignment(Qt.AlignLeft)
         
-        # Labels para propriedades detalhadas
+        # Labels para propriedades básicas
         self.electron_config_label = QLabel("-")
         self.oxidation_states_label = QLabel("-")
         self.electronegativity_label = QLabel("-")
         self.atomic_radius_label = QLabel("-")
+        
+        # Estilo para as labels
+        label_style = "color: #ffffff; font-weight: normal; padding: 3px; background-color: transparent;"
+        field_label_style = "color: #cccccc; font-weight: bold; padding: 3px;"
+        
+        self.electron_config_label.setStyleSheet(label_style)
+        self.oxidation_states_label.setStyleSheet(label_style)
+        self.electronegativity_label.setStyleSheet(label_style)
+        self.atomic_radius_label.setStyleSheet(label_style)
+        
+        # Labels de campo
+        config_label = QLabel("Configuração Eletrônica:")
+        config_label.setStyleSheet(field_label_style)
+        oxidation_label = QLabel("Estados de Oxidação:")
+        oxidation_label.setStyleSheet(field_label_style)
+        electro_label = QLabel("Eletronegatividade:")
+        electro_label.setStyleSheet(field_label_style)
+        radius_label = QLabel("Raio Atômico:")
+        radius_label.setStyleSheet(field_label_style)
+        
+        basic_layout.addRow(config_label, self.electron_config_label)
+        basic_layout.addRow(oxidation_label, self.oxidation_states_label)
+        basic_layout.addRow(electro_label, self.electronegativity_label)
+        basic_layout.addRow(radius_label, self.atomic_radius_label)
+        
+        basic_group.setLayout(basic_layout)
+        controls_layout.addWidget(basic_group)
+        
+        # === PROPRIEDADES FÍSICAS ===
+        physical_group = QGroupBox("Propriedades Físicas")
+        physical_group.setStyleSheet(basic_group.styleSheet())
+        
+        physical_layout = QFormLayout()
+        physical_layout.setSpacing(8)
+        physical_layout.setLabelAlignment(Qt.AlignLeft)
+        
         self.melting_point_label = QLabel("-")
         self.boiling_point_label = QLabel("-")
         self.density_label = QLabel("-")
+        self.thermal_conductivity_label = QLabel("-")
         
-        # Adicionar ao layout de forma mais compacta
-        layout.addRow(QLabel("Config. Eletrônica:"), self.electron_config_label)
-        layout.addRow(QLabel("Est. Oxidação:"), self.oxidation_states_label)  # Texto mais curto
-        layout.addRow(QLabel("Eletronegatividade:"), self.electronegativity_label)
-        layout.addRow(QLabel("Raio Atômico:"), self.atomic_radius_label)
-        layout.addRow(QLabel("P. Fusão:"), self.melting_point_label)  # Texto mais curto
-        layout.addRow(QLabel("P. Ebulição:"), self.boiling_point_label)  # Texto mais curto
-        layout.addRow(QLabel("Densidade:"), self.density_label)
+        self.melting_point_label.setStyleSheet(label_style)
+        self.boiling_point_label.setStyleSheet(label_style)
+        self.density_label.setStyleSheet(label_style)
+        self.thermal_conductivity_label.setStyleSheet(label_style)
         
-        group.setLayout(layout)
-        return group
-
-    def get_element_color(self, element_data, hover=False):
-        """Retorna a cor do elemento baseada na categoria (seguindo imagem de referência)"""
-        atomic_num = element_data.get('electrons', 1)
-        block = element_data.get('block', '')
+        melting_label = QLabel("Ponto de Fusão:")
+        melting_label.setStyleSheet(field_label_style)
+        boiling_label = QLabel("Ponto de Ebulição:")
+        boiling_label.setStyleSheet(field_label_style)
+        density_label = QLabel("Densidade:")
+        density_label.setStyleSheet(field_label_style)
+        thermal_label = QLabel("Condutividade Térmica:")
+        thermal_label.setStyleSheet(field_label_style)
         
-        # Cores baseadas exatamente na imagem de referência
-        if atomic_num == 1:  # Hidrogênio - azul claro
-            return '#5DADE2' if not hover else '#3498DB'
-        elif atomic_num == 2:  # Hélio - gases nobres roxo suave
-            return '#BB8FCE' if not hover else '#A569BD'
-        elif atomic_num in [3, 11, 19, 37, 55, 87]:  # Metais alcalinos - verde bem forte
-            return '#1E8449' if not hover else '#196F3D'
-        elif atomic_num in [4, 12, 20, 38, 56, 88]:  # Metais alcalino-terrosos - verde claro
-            return '#52C41A' if not hover else '#45B715'
-        elif block == 'd':  # Metais de transição - azul médio
-            return '#3498DB' if not hover else '#2980B9'
-        elif 57 <= atomic_num <= 71:  # Lantanídeos - azul claro (igual ao hidrogênio)
-            return '#5DADE2' if not hover else '#3498DB'
-        elif 89 <= atomic_num <= 103:  # Actinídeos - laranja/marrom
-            return '#E67E22' if not hover else '#D35400'
-        elif atomic_num in [5, 14, 32, 33, 51, 52]:  # Semimetais - amarelo
-            return '#F1C40F' if not hover else '#F39C12'
-        elif atomic_num in [6, 7, 8, 15, 16, 34]:  # Ametais reativos - azul bem escuro
-            return '#1B2631' if not hover else '#17202A'
-        elif atomic_num in [9, 17, 35, 53, 85]:  # Halogênios - amarelo-esverdeado
-            return '#9ACD32' if not hover else '#8FBC8F'
-        elif atomic_num in [10, 18, 36, 54, 86, 118]:  # Gases nobres - roxo suave
-            return '#BB8FCE' if not hover else '#A569BD'
-        elif block == 'p' and atomic_num in [13, 31, 49, 50, 81, 82, 83, 113, 114, 115, 116]:  # Metais pós-transição - cinza azulado
-            return '#5D6D7E' if not hover else '#566573'
-        else:
-            return '#95A5A6' if not hover else '#7F8C8D'
-    
-    def create_visualization_section(self):
-        """Cria a seção de visualização seguindo o padrão das outras abas"""
-        group = QGroupBox("Visualização e Propriedades Detalhadas")
-        main_layout = QVBoxLayout()
-        main_layout.setSpacing(15)
+        physical_layout.addRow(melting_label, self.melting_point_label)
+        physical_layout.addRow(boiling_label, self.boiling_point_label)
+        physical_layout.addRow(density_label, self.density_label)
+        physical_layout.addRow(thermal_label, self.thermal_conductivity_label)
         
-        # Divisão em subgrupos como nas outras abas
+        physical_group.setLayout(physical_layout)
+        controls_layout.addWidget(physical_group)
         
-        # === MODELO DE BOHR ===
-        bohr_group = QGroupBox("Modelo de Bohr (2D)")
-        bohr_layout = QVBoxLayout()
-        self.bohr_widget = BohrWidget()
-        self.bohr_widget.setMinimumHeight(250)
-        bohr_layout.addWidget(self.bohr_widget)
-        bohr_group.setLayout(bohr_layout)
+        # === INFORMAÇÕES HISTÓRICAS ===
+        historical_group = QGroupBox("Informações Históricas")
+        historical_group.setStyleSheet(basic_group.styleSheet())
         
-        # === VISUALIZAÇÃO 3D ===
-        viz_3d_group = QGroupBox("Visualização 3D do Átomo")
-        viz_3d_layout = QVBoxLayout()
-        self.atom_3d_widget = Atom3DWidget()
-        self.atom_3d_widget.setMinimumHeight(300)
-        viz_3d_layout.addWidget(self.atom_3d_widget)
-        viz_3d_group.setLayout(viz_3d_layout)
+        historical_layout = QFormLayout()
+        historical_layout.setSpacing(8)
+        historical_layout.setLabelAlignment(Qt.AlignLeft)
         
-        # === PROPRIEDADES DETALHADAS ===
-        props_group = QGroupBox("Propriedades Detalhadas")
-        props_layout = QVBoxLayout()
+        self.discovery_year_label = QLabel("-")
+        self.discoverers_label = QLabel("-")
+        self.abundance_crust_label = QLabel("-")
+        self.is_radioactive_label = QLabel("-")
         
-        self.detailed_properties = QTextEdit()
-        self.detailed_properties.setReadOnly(True)
-        self.detailed_properties.setMinimumHeight(200)
-        self.detailed_properties.setStyleSheet("font-family: monospace; font-size: 11px;")
-        self.detailed_properties.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.detailed_properties.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.discovery_year_label.setStyleSheet(label_style)
+        self.discoverers_label.setStyleSheet(label_style)
+        self.abundance_crust_label.setStyleSheet(label_style)
+        self.is_radioactive_label.setStyleSheet(label_style)
         
-        props_layout.addWidget(self.detailed_properties)
-        props_group.setLayout(props_layout)
+        # Permitir quebra de linha para discoverers
+        self.discoverers_label.setWordWrap(True)
         
-        # Adicionar subgrupos ao grupo principal
-        main_layout.addWidget(bohr_group)
-        main_layout.addWidget(viz_3d_group) 
-        main_layout.addWidget(props_group)
+        year_label = QLabel("Ano de Descoberta:")
+        year_label.setStyleSheet(field_label_style)
+        discoverers_field_label = QLabel("Descobridores:")
+        discoverers_field_label.setStyleSheet(field_label_style)
+        abundance_label = QLabel("Abundância na Crosta:")
+        abundance_label.setStyleSheet(field_label_style)
+        radioactive_label = QLabel("Radioativo:")
+        radioactive_label.setStyleSheet(field_label_style)
         
-        group.setLayout(main_layout)
-        return group
-        """Cria a tabela periódica interativa organizada"""
-        widget = QWidget()
-        layout = QVBoxLayout()
-        layout.setContentsMargins(5, 5, 5, 5)
+        historical_layout.addRow(year_label, self.discovery_year_label)
+        historical_layout.addRow(discoverers_field_label, self.discoverers_label)
+        historical_layout.addRow(abundance_label, self.abundance_crust_label)
+        historical_layout.addRow(radioactive_label, self.is_radioactive_label)
         
-        # Grid da tabela com layout correto da tabela periódica
-        grid = QGridLayout()
-        grid.setSpacing(2)
+        historical_group.setLayout(historical_layout)
+        controls_layout.addWidget(historical_group)
         
-        # Cria tabela completa usando dados da biblioteca Mendeleev
-        # Layouts por períodos seguindo a referência correta
-        period_layouts = {
-            1: [(0, 0, 1), (0, 17, 2)],  # H, He
-            2: [(1, 0, 3), (1, 1, 4), (1, 12, 5), (1, 13, 6), (1, 14, 7), (1, 15, 8), (1, 16, 9), (1, 17, 10)],  # Li-Ne
-            3: [(2, 0, 11), (2, 1, 12), (2, 12, 13), (2, 13, 14), (2, 14, 15), (2, 15, 16), (2, 16, 17), (2, 17, 18)],  # Na-Ar
-            4: [(3, 0, 19), (3, 1, 20), (3, 2, 21), (3, 3, 22), (3, 4, 23), (3, 5, 24), (3, 6, 25), 
-                (3, 7, 26), (3, 8, 27), (3, 9, 28), (3, 10, 29), (3, 11, 30), (3, 12, 31), (3, 13, 32), 
-                (3, 14, 33), (3, 15, 34), (3, 16, 35), (3, 17, 36)],  # K-Kr
-            5: [(4, 0, 37), (4, 1, 38), (4, 2, 39), (4, 3, 40), (4, 4, 41), (4, 5, 42), (4, 6, 43), 
-                (4, 7, 44), (4, 8, 45), (4, 9, 46), (4, 10, 47), (4, 11, 48), (4, 12, 49), (4, 13, 50), 
-                (4, 14, 51), (4, 15, 52), (4, 16, 53), (4, 17, 54)],  # Rb-Xe
-            6: [(5, 0, 55), (5, 1, 56), (5, 2, 57), (5, 3, 72), (5, 4, 73), (5, 5, 74), (5, 6, 75), (5, 7, 76), 
-                (5, 8, 77), (5, 9, 78), (5, 10, 79), (5, 11, 80), (5, 12, 81), (5, 13, 82), (5, 14, 83), 
-                (5, 15, 84), (5, 16, 85), (5, 17, 86)],  # Cs-Rn (Po no grupo 16, At no grupo 17)
-            7: [(6, 0, 87), (6, 1, 88), (6, 2, 89), (6, 3, 104), (6, 4, 105), (6, 5, 106), (6, 6, 107), (6, 7, 108), 
-                (6, 8, 109), (6, 9, 110), (6, 10, 111), (6, 11, 112), (6, 12, 113), (6, 13, 114), (6, 14, 115), 
-                (6, 15, 116), (6, 16, 117), (6, 17, 118)]  # Fr-Og (Ac no lugar correto)
-        }
+        # Adicionar stretch para empurrar tudo para cima
+        controls_layout.addStretch()
         
-        # Lantanídeos (separados embaixo) - Período 8, centralizados
-        lanthanides = [(8, i+2, 58+i) for i in range(14)]  # Ce-Lu (58-71), começando na coluna 2
+        controls_panel.setLayout(controls_layout)
+        main_layout.addWidget(controls_panel)
         
-        # Actinídeos (separados embaixo) - Período 9, centralizados  
-        actinides = [(9, i+2, 90+i) for i in range(14)]    # Th-Lr (90-103), começando na coluna 2
-        
-        all_positions = []
-        for period_data in period_layouts.values():
-            all_positions.extend(period_data)
-        all_positions.extend(lanthanides)
-        all_positions.extend(actinides)
-        
-        # Aplica layout
-        for row, col, atomic_num in all_positions:
-            element_data = get_element_data(atomic_num)
-            if element_data:
-                btn = QPushButton()
-                btn.setText(f"{element_data['symbol']}\n{atomic_num}")
-                btn.setMinimumSize(40, 40)
-                btn.setMaximumSize(40, 40)
-                btn.setFont(QFont("Segoe UI", 8, QFont.Bold))
-                btn.clicked.connect(lambda checked, num=atomic_num: self.select_element(num))
-                
-                # Cores seguindo o padrão da interface mostrada na imagem
-                block = element_data.get('block', '')
-                group = element_data.get('group', 0)
-                period = element_data.get('period', 0)
-                
-                # Cores baseadas na imagem de referência da tabela periódica
-                if atomic_num == 1:  # Hidrogênio - azul claro
-                    color = "#5DADE2"
-                elif atomic_num == 2:  # Hélio - rosa/roxo
-                    color = "#BB8FCE"
-                elif atomic_num in [3, 11, 19, 37, 55, 87]:  # Metais alcalinos - verde escuro
-                    color = "#52C41A"
-                elif atomic_num in [4, 12, 20, 38, 56, 88]:  # Metais alcalino-terrosos - verde claro
-                    color = "#73D13D"
-                elif 21 <= atomic_num <= 30 or 39 <= atomic_num <= 48 or atomic_num in [72, 73, 74, 75, 76, 77, 78, 79, 80] or 104 <= atomic_num <= 112:  # Metais de transição - azul
-                    color = "#4A90E2"
-                elif 57 <= atomic_num <= 71:  # Lantanídeos - azul claro
-                    color = "#85C1E9"
-                elif 89 <= atomic_num <= 103:  # Actinídeos - azul escuro
-                    color = "#5499C7"
-                elif atomic_num in [13, 31, 49, 50, 81, 82, 83, 113, 114, 115, 116]:  # Metais do bloco p - cinza azulado
-                    color = "#7FB3D3"
-                elif atomic_num in [5, 14, 32, 33, 51, 52]:  # Metaloides - amarelo/laranja
-                    color = "#F7DC6F"
-                elif atomic_num in [6, 7, 8, 15, 16, 34, 84]:  # Não-metais e calcogênios (incluindo Po)
-                    color = "#F1948A"
-                elif atomic_num in [9, 17, 35, 53, 85, 117]:  # Halogênios (At no lugar correto)
-                    color = "#F8C471"
-                elif atomic_num in [10, 18, 36, 54, 86, 118]:  # Gases nobres - roxo
-                    color = "#D2B4DE"
-                else:  # Outros elementos - cinza padrão
-                    color = "#6c757d"
-                
-                btn.setStyleSheet(f"""
-                    QPushButton {{
-                        background-color: {color}; 
-                        color: #ffffff; 
-                        border: 1px solid #5a5a5a;
-                        border-radius: 3px;
-                        font-weight: bold;
-                        font-size: 10px;
-                    }}
-                    QPushButton:hover {{
-                        background-color: #7a7a7a;
-                        border: 1px solid #ffffff;
-                    }}
-                    QPushButton:pressed {{
-                        background-color: #5a5a5a;
-                    }}
-                """)
-                
-                grid.addWidget(btn, row, col)
-        
-        layout.addLayout(grid)
-        layout.addStretch()
-        
-        widget.setLayout(layout)
-        widget.setStyleSheet("""
+        # === ÁREA DE VISUALIZAÇÃO À DIREITA ===
+        visualization_panel = QWidget()
+        visualization_panel.setStyleSheet("""
             QWidget {
                 background-color: #3c3c3c;
-                border-radius: 5px;
             }
         """)
-        return widget
-    
-    def create_element_info_panel(self):
-        """Cria painel de informações básicas do elemento seguindo padrão das outras abas"""
-        group = QGroupBox("Informações do Elemento")
-        layout = QFormLayout()
-        layout.setVerticalSpacing(10)
-        layout.setHorizontalSpacing(15)
         
-        # Informações básicas do elemento
-        self.element_name_label = QLabel("Selecione um elemento")
-        self.element_name_label.setStyleSheet("font-weight: bold; font-size: 16px;")
-        layout.addRow("Elemento:", self.element_name_label)
+        viz_layout = QVBoxLayout()
+        viz_layout.setContentsMargins(20, 20, 20, 20)
         
-        # Número atômico
-        self.atomic_number_label = QLabel("-")
-        layout.addRow("Número Atômico:", self.atomic_number_label)
-        
-        # Massa atômica
-        self.atomic_mass_label = QLabel("-")
-        layout.addRow("Massa Atômica:", self.atomic_mass_label)
-        
-        # Período e grupo
-        self.period_label = QLabel("-")
-        layout.addRow("Período:", self.period_label)
-        
-        self.group_label = QLabel("-")
-        layout.addRow("Grupo:", self.group_label)
-        
-        # Configuração eletrônica
-        self.electron_config_label = QLabel("-")
-        self.electron_config_label.setWordWrap(True)
-        layout.addRow("Config. Eletrônica:", self.electron_config_label)
-        
-        # Propriedades físicas básicas
-        self.density_label = QLabel("-")
-        layout.addRow("Densidade:", self.density_label)
-        
-        self.melting_point_label = QLabel("-")
-        layout.addRow("Ponto de Fusão:", self.melting_point_label)
-        
-        self.boiling_point_label = QLabel("-")
-        layout.addRow("Ponto de Ebulição:", self.boiling_point_label)
-        
-        group.setLayout(layout)
-        return group
-    
-    def create_detailed_properties_panel(self):
-        """Cria painel de propriedades detalhadas seguindo padrão das outras abas"""
-        group = QGroupBox("Propriedades Detalhadas")
-        layout = QVBoxLayout()
-        
-        # Text widget para propriedades detalhadas
-        self.detailed_properties = QTextEdit()
-        self.detailed_properties.setReadOnly(True)
-        self.detailed_properties.setMinimumHeight(300)
-        self.detailed_properties.setStyleSheet("""
-            QTextEdit {
-                font-family: monospace;
-                font-size: 11px;
-                line-height: 1.4;
-            }
-        """)
-        layout.addWidget(self.detailed_properties)
-        
-        group.setLayout(layout)
-        return group
-    
-    def create_visualization_panel(self):
-        """Cria painel de visualizações"""
-        widget = QWidget()
-        layout = QVBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
-        
-        # Informações básicas do elemento
-        self.info_label = QLabel()
-        self.info_label.setFont(QFont("Segoe UI", 10))
-        self.info_label.setAlignment(Qt.AlignLeft)
-        self.info_label.setStyleSheet("""
+        # Título da visualização
+        viz_title = QLabel("Propriedades do Elemento")
+        viz_title.setStyleSheet("""
             QLabel {
-                background-color: #4a4a4a; 
-                color: #ffffff;
-                padding: 15px; 
-                border-radius: 8px; 
-                border: 1px solid #666666;
-                margin: 5px;
-                line-height: 1.6;
-            }
-        """)
-        layout.addWidget(self.info_label)
-        
-        # Abas para diferentes tipos de informações
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #666666;
-                border-radius: 8px;
-                background-color: #4a4a4a;
-                margin-top: 5px;
-            }
-            QTabBar::tab {
-                background-color: #5a5a5a;
-                color: #ffffff;
-                padding: 8px 12px;
-                margin: 1px;
-                border-radius: 5px;
+                font-size: 18px;
                 font-weight: bold;
-                font-size: 10px;
-                min-width: 80px;
-            }
-            QTabBar::tab:selected {
-                background-color: #007ACC;
-                color: white;
-            }
-            QTabBar::tab:hover {
-                background-color: #6a6a6a;
-            }
-            QTabWidget::tab-bar {
-                alignment: center;
-            }
-        """)
-        
-        # Aba 2D
-        self.bohr_widget = BohrWidget()
-        self.tab_widget.addTab(self.bohr_widget, "Modelo 2D")
-        
-        # Aba 3D  
-        self.atom_3d_widget = Atom3DWidget()
-        self.tab_widget.addTab(self.atom_3d_widget, "Modelo 3D")
-        
-        # Aba de Propriedades Detalhadas
-        self.properties_widget = self.create_properties_widget()
-        self.tab_widget.addTab(self.properties_widget, "Propriedades")
-        
-        layout.addWidget(self.tab_widget)
-        
-        # Atualiza com elemento padrão
-        self.select_element(self.current_element)
-        
-        widget.setLayout(layout)
-        widget.setStyleSheet("""
-            QWidget {
-                background-color: #4a4a4a;
-                border-radius: 8px;
-                margin: 5px;
-            }
-        """)
-        return widget
-    
-    def create_properties_widget(self):
-        """Cria widget com propriedades detalhadas do elemento"""
-        widget = QWidget()
-        layout = QVBoxLayout()
-        
-        # Text area com scroll para propriedades detalhadas
-        self.properties_text = QTextEdit()
-        self.properties_text.setReadOnly(True)
-        self.properties_text.setFont(QFont("Segoe UI", 10))
-        self.properties_text.setStyleSheet("""
-            QTextEdit {
-                background-color: #4a4a4a;
                 color: #ffffff;
-                border: 1px solid #666666;
-                border-radius: 8px;
-                padding: 10px;
-            }
-            QScrollBar:vertical {
-                background-color: #5a5a5a;
-                width: 12px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #007ACC;
-                border-radius: 6px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #0099FF;
+                padding: 15px;
+                background-color: transparent;
             }
         """)
+        viz_title.setAlignment(Qt.AlignCenter)
+        viz_layout.addWidget(viz_title)
         
-        layout.addWidget(self.properties_text)
-        widget.setLayout(layout)
-        return widget
-    
-    def create_3d_controls(self):
-        """Cria controles para visualização 3D"""
-        # Removido - sem controles necessários
-        pass
+        # Área para informações do elemento
+        self.properties_display = QLabel("Selecione um elemento para ver suas propriedades")
+        self.properties_display.setStyleSheet("""
+            QLabel {
+                font-size: 14px;
+                color: #cccccc;
+                padding: 30px;
+                background-color: transparent;
+            }
+        """)
+        self.properties_display.setAlignment(Qt.AlignCenter)
+        self.properties_display.setWordWrap(True)
+        viz_layout.addWidget(self.properties_display)
+        
+        # Adicionar stretch para centralizar o conteúdo
+        viz_layout.addStretch()
+        
+        visualization_panel.setLayout(viz_layout)
+        main_layout.addWidget(visualization_panel)
+        
+        main_widget.setLayout(main_layout)
+        
+        # DEBUG: Confirmar que as labels foram criadas
+        print(f"Labels de propriedades criadas: {self.electron_config_label is not None}")
+        return main_widget
     
     def select_element(self, atomic_num):
         """Seleciona um elemento para visualização"""
         element_data = get_element_data(atomic_num)
         if not element_data:
+            print(f"Dados não encontrados para elemento {atomic_num}")
             return
             
         self.current_element = atomic_num
         print(f"Selecionando elemento: {element_data['name']} ({atomic_num})")  # Debug
         
-        # Atualiza informações básicas - verificação segura
-        if hasattr(self, 'name_label') and self.name_label is not None:
+        # Verifica se as labels existem antes de atualizar
+        if not hasattr(self, 'name_label') or self.name_label is None:
+            print("Labels não foram criadas ainda!")
+            return
+        
+        # Atualiza informações básicas
+        try:
             self.name_label.setText(element_data['name'])
-        if hasattr(self, 'symbol_label') and self.symbol_label is not None:
             self.symbol_label.setText(element_data['symbol'])
-        if hasattr(self, 'atomic_number_label') and self.atomic_number_label is not None:
             self.atomic_number_label.setText(str(atomic_num))
-        if hasattr(self, 'mass_label') and self.mass_label is not None:
             self.mass_label.setText(f"{element_data['mass']} u")
-        if hasattr(self, 'period_label') and self.period_label is not None:
+            
             period = element_data.get('period', 'N/A')
             self.period_label.setText(str(period) if period else 'N/A')
-        if hasattr(self, 'group_label') and self.group_label is not None:
+            
             group = element_data.get('group')
             if group is not None and str(group).strip() and group != 'N/A':
                 try:
-                    # Tenta converter para inteiro
                     group_num = int(float(group))
                     self.group_label.setText(str(group_num))
                 except (ValueError, TypeError):
-                    # Se não conseguir converter, mostra como string
                     self.group_label.setText(str(group))
             else:
                 self.group_label.setText('N/A')
-        if hasattr(self, 'block_label') and self.block_label is not None:
+                
             block = element_data.get('block', 'N/A')
             self.block_label.setText(block.upper() if block else 'N/A')
-        if hasattr(self, 'category_label') and self.category_label is not None:
+            
             category = self.get_element_category(element_data)
             self.category_label.setText(category)
+            
+            # Atualiza info rápida se existir
+            if hasattr(self, 'quick_info') and self.quick_info is not None:
+                self.quick_info.setText(f"{element_data['name']} - {category}")
+        except Exception as e:
+            print(f"Erro ao atualizar informações básicas: {e}")
         
-        # Atualiza info rápida
-        if hasattr(self, 'quick_info') and self.quick_info is not None:
-            self.quick_info.setText(f"{element_data['name']} - {self.get_element_category(element_data)}")
-        
-        # Atualiza propriedades detalhadas
+        # Atualiza propriedades detalhadas se as labels existem
         if hasattr(self, 'electron_config_label') and self.electron_config_label is not None:
-            config = element_data.get('electron_configuration', 'N/A')
-            if config and config != 'N/A' and str(config).strip():
-                self.electron_config_label.setText(str(config))
-            else:
-                # Fallback para configuração básica se não houver dados
-                shells = get_electron_configuration(atomic_num)
-                if shells:
-                    config_text = f"Camadas: {', '.join(map(str, shells))}"
-                    self.electron_config_label.setText(config_text)
+            try:
+                # Configuração eletrônica
+                config = element_data.get('electron_configuration', 'N/A')
+                if config and config != 'N/A' and str(config).strip():
+                    self.electron_config_label.setText(str(config))
                 else:
-                    self.electron_config_label.setText('N/A')
-        
-        if hasattr(self, 'oxidation_states_label') and self.oxidation_states_label is not None:
-            oxidation_states = element_data.get('oxidation_states', [])
-            if oxidation_states:
-                # Trata oxidation_states de forma segura
-                if hasattr(oxidation_states, '__call__'):
-                    try:
-                        oxidation_states = oxidation_states()
-                    except:
-                        oxidation_states = []
+                    shells = get_electron_configuration(atomic_num)
+                    if shells:
+                        config_text = f"Camadas: {', '.join(map(str, shells))}"
+                        self.electron_config_label.setText(config_text)
+                    else:
+                        self.electron_config_label.setText('N/A')
                 
-                if isinstance(oxidation_states, (list, tuple)):
-                    clean_states = []
+                # Estados de oxidação
+                oxidation_states = element_data.get('oxidation_states', [])
+                if oxidation_states and len(oxidation_states) > 0:
+                    # Formatar estados de oxidação com sinais + ou -
+                    formatted_states = []
                     for state in oxidation_states:
                         if isinstance(state, (int, float)):
-                            clean_states.append(str(int(state)))
-                        elif isinstance(state, str):
-                            clean_state = state.replace('[', '').replace(']', '').replace('(', '').replace(')', '').replace("'", '').replace('"', '').strip()
-                            if clean_state and clean_state not in ['None', 'N/A', '']:
-                                clean_states.append(clean_state)
-                    if clean_states:
-                        self.oxidation_states_label.setText(', '.join(clean_states))
+                            if state > 0:
+                                formatted_states.append(f"+{int(state)}")
+                            elif state < 0:
+                                formatted_states.append(f"{int(state)}")
+                            else:
+                                formatted_states.append("0")
+                    if formatted_states:
+                        self.oxidation_states_label.setText(', '.join(formatted_states))
                     else:
                         self.oxidation_states_label.setText('N/A')
                 else:
                     self.oxidation_states_label.setText('N/A')
-            else:
-                self.oxidation_states_label.setText('N/A')
+                
+                # Eletronegatividade
+                electronegativity = element_data.get('electronegativity')
+                if electronegativity and isinstance(electronegativity, (int, float)):
+                    self.electronegativity_label.setText(f"{electronegativity:.2f}")
+                else:
+                    self.electronegativity_label.setText('N/A')
+                
+                # Raio atômico
+                atomic_radius = element_data.get('atomic_radius')
+                if atomic_radius and isinstance(atomic_radius, (int, float)):
+                    self.atomic_radius_label.setText(f"{atomic_radius:.0f} pm")
+                else:
+                    self.atomic_radius_label.setText('N/A')
+                
+                # Pontos de fusão e ebulição
+                melting_point = element_data.get('melting_point')
+                if melting_point and isinstance(melting_point, (int, float)):
+                    self.melting_point_label.setText(f"{melting_point:.1f} K ({melting_point-273.15:.1f} °C)")
+                else:
+                    self.melting_point_label.setText('N/A')
+                
+                boiling_point = element_data.get('boiling_point')
+                if boiling_point and isinstance(boiling_point, (int, float)):
+                    self.boiling_point_label.setText(f"{boiling_point:.1f} K ({boiling_point-273.15:.1f} °C)")
+                else:
+                    self.boiling_point_label.setText('N/A')
+                
+                # Densidade
+                density = element_data.get('density')
+                if density and isinstance(density, (int, float)):
+                    self.density_label.setText(f"{density:.3f} g/cm³")
+                else:
+                    self.density_label.setText('N/A')
+                
+                # Propriedades estendidas se existirem
+                if hasattr(self, 'ionization_energy_label'):
+                    ionization_energies = element_data.get('ionization_energies', [])
+                    if ionization_energies and len(ionization_energies) > 0:
+                        first_ie = ionization_energies[0]
+                        if isinstance(first_ie, (int, float)):
+                            self.ionization_energy_label.setText(f"{first_ie:.1f} eV")
+                        else:
+                            self.ionization_energy_label.setText('N/A')
+                    else:
+                        self.ionization_energy_label.setText('N/A')
+                
+                if hasattr(self, 'electron_affinity_label'):
+                    electron_affinity = element_data.get('electron_affinity')
+                    if electron_affinity and isinstance(electron_affinity, (int, float)):
+                        self.electron_affinity_label.setText(f"{electron_affinity:.1f} eV")
+                    else:
+                        self.electron_affinity_label.setText('N/A')
+                
+                if hasattr(self, 'thermal_conductivity_label'):
+                    thermal_conductivity = element_data.get('thermal_conductivity')
+                    if thermal_conductivity and isinstance(thermal_conductivity, (int, float)):
+                        self.thermal_conductivity_label.setText(f"{thermal_conductivity:.1f} W/(m·K)")
+                    else:
+                        self.thermal_conductivity_label.setText('N/A')
+                
+                if hasattr(self, 'specific_heat_label'):
+                    specific_heat = element_data.get('specific_heat')
+                    if specific_heat and isinstance(specific_heat, (int, float)):
+                        self.specific_heat_label.setText(f"{specific_heat:.1f} J/(kg·K)")
+                    else:
+                        self.specific_heat_label.setText('N/A')
+                
+                if hasattr(self, 'discovery_year_label'):
+                    discovery_year = element_data.get('discovery_year')
+                    if discovery_year:
+                        self.discovery_year_label.setText(str(discovery_year))
+                    else:
+                        self.discovery_year_label.setText('N/A')
+                
+                if hasattr(self, 'discoverers_label'):
+                    discoverers = element_data.get('discoverers')
+                    if discoverers:
+                        # Tratar caso seja uma lista ou string
+                        if isinstance(discoverers, list):
+                            self.discoverers_label.setText(', '.join(discoverers))
+                        else:
+                            self.discoverers_label.setText(str(discoverers))
+                    else:
+                        self.discoverers_label.setText('N/A')
+                
+                if hasattr(self, 'abundance_crust_label'):
+                    abundance_crust = element_data.get('abundance_crust')
+                    if abundance_crust and isinstance(abundance_crust, (int, float)):
+                        self.abundance_crust_label.setText(f"{abundance_crust:.2e} mg/kg")
+                    else:
+                        self.abundance_crust_label.setText('N/A')
+                
+                if hasattr(self, 'crystal_structure_label'):
+                    crystal_structure = element_data.get('crystal_structure')
+                    if crystal_structure:
+                        self.crystal_structure_label.setText(str(crystal_structure))
+                    else:
+                        self.crystal_structure_label.setText('N/A')
+                
+                if hasattr(self, 'is_radioactive_label'):
+                    is_radioactive = element_data.get('is_radioactive', False)
+                    self.is_radioactive_label.setText('Sim' if is_radioactive else 'Não')
+                
+            except Exception as e:
+                print(f"Erro ao atualizar propriedades detalhadas: {e}")
         
-        if hasattr(self, 'electronegativity_label') and self.electronegativity_label is not None:
-            electronegativity = element_data.get('electronegativity')
-            if electronegativity and isinstance(electronegativity, (int, float)):
-                self.electronegativity_label.setText(f"{electronegativity:.2f}")
-            else:
-                self.electronegativity_label.setText('N/A')
-        
-        if hasattr(self, 'atomic_radius_label') and self.atomic_radius_label is not None:
-            atomic_radius = element_data.get('atomic_radius')
-            self.atomic_radius_label.setText(f"{atomic_radius} pm" if atomic_radius else 'N/A')
-        
-        if hasattr(self, 'melting_point_label') and self.melting_point_label is not None:
-            melting_point = element_data.get('melting_point')
-            if melting_point and isinstance(melting_point, (int, float)):
-                melting_celsius = melting_point - 273.15 if melting_point > 0 else melting_point
-                self.melting_point_label.setText(f"{melting_celsius:.1f} °C")
-            else:
-                self.melting_point_label.setText('N/A')
-        
-        if hasattr(self, 'boiling_point_label') and self.boiling_point_label is not None:
-            boiling_point = element_data.get('boiling_point')
-            if boiling_point and isinstance(boiling_point, (int, float)):
-                boiling_celsius = boiling_point - 273.15 if boiling_point > 0 else boiling_point
-                self.boiling_point_label.setText(f"{boiling_celsius:.1f} °C")
-            else:
-                self.boiling_point_label.setText('N/A')
-        
-        if hasattr(self, 'density_label') and self.density_label is not None:
-            density = element_data.get('density')
-            self.density_label.setText(f"{density} g/cm³" if density else 'N/A')
-        
-        # Atualiza modelos de Bohr e 3D
+        # Atualiza modelo de Bohr
         if hasattr(self, 'bohr_widget') and self.bohr_widget is not None:
-            self.bohr_widget.set_element(atomic_num)
-        if hasattr(self, 'atom_3d_widget') and self.atom_3d_widget is not None:
-            self.atom_3d_widget.set_element(atomic_num)
+            try:
+                self.bohr_widget.set_element(atomic_num)
+            except Exception as e:
+                print(f"Erro ao atualizar widget Bohr: {e}")
         
         # Emite sinal
         self.element_selected.emit(atomic_num)
@@ -1511,3 +1444,43 @@ class PeriodicTableTabFinal(QWidget):
             return "Metais pós-transição"
         else:
             return "Propriedades desconhecidas"
+    
+    def get_element_color(self, element_data):
+        """Retorna cor do elemento baseada na categoria usando Mendeleev"""
+        atomic_num = element_data.get('electrons', 1)
+        
+        # Cores otimizadas baseadas nas categorias
+        color_map = {
+            1: "#5DADE2",  # Hidrogênio - azul claro
+            2: "#BB8FCE",  # Hélio - roxo claro
+            **{n: "#52C41A" for n in [3, 11, 19, 37, 55, 87]},  # Metais alcalinos - verde escuro
+            **{n: "#73D13D" for n in [4, 12, 20, 38, 56, 88]},  # Metais alcalino-terrosos - verde claro
+            **{n: "#4A90E2" for n in list(range(21, 31)) + list(range(39, 49)) + list(range(72, 81)) + list(range(104, 113))},  # Metais de transição - azul
+            **{n: "#85C1E9" for n in range(57, 72)},  # Lantanídeos - azul claro
+            **{n: "#5499C7" for n in range(89, 104)},  # Actinídeos - azul escuro
+            **{n: "#7FB3D3" for n in [13, 31, 49, 50, 81, 82, 83, 113, 114, 115, 116]},  # Metais pós-transição
+            **{n: "#F7DC6F" for n in [5, 14, 32, 33, 51, 52]},  # Metaloides - amarelo
+            **{n: "#F1948A" for n in [6, 7, 8, 15, 16, 34, 84]},  # Não-metais - rosa
+            **{n: "#F8C471" for n in [9, 17, 35, 53, 85, 117]},  # Halogênios - laranja
+            **{n: "#D2B4DE" for n in [10, 18, 36, 54, 86, 118]},  # Gases nobres - roxo
+        }
+        
+        return color_map.get(atomic_num, "#6c757d")  # Cinza padrão
+    
+    def lighten_color(self, color):
+        """Clareia uma cor para efeito hover"""
+        # Remove o # se existir
+        color = color.lstrip('#')
+        
+        # Converte para RGB
+        r = int(color[0:2], 16)
+        g = int(color[2:4], 16)
+        b = int(color[4:6], 16)
+        
+        # Clareia adicionando 30 a cada componente (máximo 255)
+        r = min(255, r + 30)
+        g = min(255, g + 30)
+        b = min(255, b + 30)
+        
+        # Converte de volta para hex
+        return f"#{r:02x}{g:02x}{b:02x}"
