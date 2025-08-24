@@ -272,7 +272,7 @@ class EquationsTab(QWidget):
             # Criar figura com fundo transparente
             fig, ax = plt.subplots(figsize=(14, 3))
             ax.text(0.5, 0.5, latex_equation, transform=ax.transAxes, 
-                   fontsize=32, ha='center', va='center', color='white')
+                   fontsize=50, ha='center', va='center', color='white')
             ax.axis('off')
             
             # Fundo transparente
