@@ -430,8 +430,9 @@ class PeriodicTableTabFinal(QWidget):
         properties_layout.setSpacing(0)
         properties_layout.setContentsMargins(0, 0, 0, 0)
         
+        # Adiciona o widget de propriedades detalhadas ocupando toda a aba
         detailed_props_group = self.create_detailed_properties_section()
-        properties_layout.addWidget(detailed_props_group)
+        properties_layout.addWidget(detailed_props_group, stretch=1)
         
         properties_tab.setLayout(properties_layout)
         main_tabs.addTab(properties_tab, "Propriedades")
@@ -1010,24 +1011,24 @@ class PeriodicTableTabFinal(QWidget):
         main_widget = QWidget()
         main_widget.setStyleSheet("background-color: #3c3c3c;")
         
-        # Layout principal horizontal (controles à esquerda, visualização à direita)
-        main_layout = QHBoxLayout()
+        # Layout principal que ocupa toda a tela
+        main_layout = QVBoxLayout()
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
         
-        # === PAINEL DE CONTROLES À ESQUERDA ===
-        controls_panel = QWidget()
-        controls_panel.setFixedWidth(400)
-        controls_panel.setStyleSheet("""
+        # === TODAS AS PROPRIEDADES EM UMA ÚNICA ÁREA ===
+        properties_panel = QWidget()
+        properties_panel.setStyleSheet("""
             QWidget {
                 background-color: #2c2c2c;
-                padding: 5px;
+                padding: 20px;
             }
         """)
         
-        controls_layout = QVBoxLayout()
-        controls_layout.setSpacing(15)
-        controls_layout.setContentsMargins(15, 15, 15, 15)
+        # Layout de grid para organizar as propriedades em colunas
+        properties_layout = QGridLayout()
+        properties_layout.setSpacing(30)
+        properties_layout.setContentsMargins(20, 20, 20, 20)
         
         # === PROPRIEDADES BÁSICAS ===
         basic_group = QGroupBox("Propriedades Básicas")
@@ -1035,11 +1036,12 @@ class PeriodicTableTabFinal(QWidget):
             QGroupBox {
                 font-weight: bold;
                 font-size: 13px;
-                color: #e67e22;
+                color: #ffffff;
                 border: 1px solid #555;
                 border-radius: 5px;
                 margin-top: 10px;
                 padding-top: 10px;
+                min-width: 300px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -1083,7 +1085,6 @@ class PeriodicTableTabFinal(QWidget):
         basic_layout.addRow(radius_label, self.atomic_radius_label)
         
         basic_group.setLayout(basic_layout)
-        controls_layout.addWidget(basic_group)
         
         # === PROPRIEDADES FÍSICAS ===
         physical_group = QGroupBox("Propriedades Físicas")
@@ -1118,7 +1119,6 @@ class PeriodicTableTabFinal(QWidget):
         physical_layout.addRow(thermal_label, self.thermal_conductivity_label)
         
         physical_group.setLayout(physical_layout)
-        controls_layout.addWidget(physical_group)
         
         # === INFORMAÇÕES HISTÓRICAS ===
         historical_group = QGroupBox("Informações Históricas")
@@ -1156,58 +1156,17 @@ class PeriodicTableTabFinal(QWidget):
         historical_layout.addRow(radioactive_label, self.is_radioactive_label)
         
         historical_group.setLayout(historical_layout)
-        controls_layout.addWidget(historical_group)
         
-        # Adicionar stretch para empurrar tudo para cima
-        controls_layout.addStretch()
+        # Organizar em grid: 2 colunas na primeira linha, 1 na segunda
+        properties_layout.addWidget(basic_group, 0, 0)
+        properties_layout.addWidget(physical_group, 0, 1)
+        properties_layout.addWidget(historical_group, 1, 0, 1, 2)  # Span 2 colunas
         
-        controls_panel.setLayout(controls_layout)
-        main_layout.addWidget(controls_panel)
+        # Adicionar stretch para expandir verticalmente
+        properties_layout.setRowStretch(2, 1)
         
-        # === ÁREA DE VISUALIZAÇÃO À DIREITA ===
-        visualization_panel = QWidget()
-        visualization_panel.setStyleSheet("""
-            QWidget {
-                background-color: #3c3c3c;
-            }
-        """)
-        
-        viz_layout = QVBoxLayout()
-        viz_layout.setContentsMargins(20, 20, 20, 20)
-        
-        # Título da visualização
-        viz_title = QLabel("Propriedades do Elemento")
-        viz_title.setStyleSheet("""
-            QLabel {
-                font-size: 18px;
-                font-weight: bold;
-                color: #ffffff;
-                padding: 15px;
-                background-color: transparent;
-            }
-        """)
-        viz_title.setAlignment(Qt.AlignCenter)
-        viz_layout.addWidget(viz_title)
-        
-        # Área para informações do elemento
-        self.properties_display = QLabel("Selecione um elemento para ver suas propriedades")
-        self.properties_display.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                color: #cccccc;
-                padding: 30px;
-                background-color: transparent;
-            }
-        """)
-        self.properties_display.setAlignment(Qt.AlignCenter)
-        self.properties_display.setWordWrap(True)
-        viz_layout.addWidget(self.properties_display)
-        
-        # Adicionar stretch para centralizar o conteúdo
-        viz_layout.addStretch()
-        
-        visualization_panel.setLayout(viz_layout)
-        main_layout.addWidget(visualization_panel)
+        properties_panel.setLayout(properties_layout)
+        main_layout.addWidget(properties_panel)
         
         main_widget.setLayout(main_layout)
         

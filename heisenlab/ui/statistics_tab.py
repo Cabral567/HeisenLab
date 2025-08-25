@@ -15,7 +15,12 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QDialog,
     QHBoxLayout,
+    QSplitter,
+    QApplication,
+    QMessageBox,
+    QFileDialog,
 )
+from PySide6.QtGui import QFont
 
 from ..calculations import (
     absolute_deviation,
@@ -31,254 +36,328 @@ from ..calculations import (
 )
 
 
+class ZoomableTextEdit(QTextEdit):
+    """QTextEdit with zoom functionality using Ctrl+Mouse Wheel."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.base_font_size = 17  # Tamanho base da fonte
+        # Definir fonte inicial
+        font = QFont("monospace")
+        font.setPointSize(self.base_font_size)
+        self.setFont(font)
+        
+    def wheelEvent(self, event):
+        """Handle mouse wheel events for zooming."""
+        if event.modifiers() == Qt.ControlModifier:
+            # Zoom com Ctrl + Mouse Wheel
+            delta = event.angleDelta().y()
+            if delta > 0:
+                self.zoom_in()
+            else:
+                self.zoom_out()
+            event.accept()
+        else:
+            # Scroll normal
+            super().wheelEvent(event)
+    
+    def zoom_in(self):
+        """Increase font size."""
+        current_font = self.font()
+        current_size = current_font.pointSize()
+        if current_size == -1:  # Se pointSize não funcionar, usar pixelSize
+            current_size = current_font.pixelSize()
+            if current_size < 30:
+                current_font.setPixelSize(current_size + 1)
+                self.setFont(current_font)
+        else:
+            if current_size < 30:  # Limite máximo
+                current_font.setPointSize(current_size + 1)
+                self.setFont(current_font)
+    
+    def zoom_out(self):
+        """Decrease font size."""
+        current_font = self.font()
+        current_size = current_font.pointSize()
+        if current_size == -1:  # Se pointSize não funcionar, usar pixelSize
+            current_size = current_font.pixelSize()
+            if current_size > 8:
+                current_font.setPixelSize(current_size - 1)
+                self.setFont(current_font)
+        else:
+            if current_size > 8:  # Limite mínimo
+                current_font.setPointSize(current_size - 1)
+                self.setFont(current_font)
+    
+    def reset_zoom(self):
+        """Reset font size to base size."""
+        font = QFont("monospace")
+        font.setPointSize(self.base_font_size)
+        self.setFont(font)
+
+
+class ZoomableDataInput(QTextEdit):
+    """QTextEdit for data input with zoom functionality."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.base_font_size = 11  # Tamanho base da fonte para input
+        # Definir fonte inicial
+        font = QFont("monospace")
+        font.setPointSize(self.base_font_size)
+        self.setFont(font)
+        
+    def wheelEvent(self, event):
+        """Handle mouse wheel events for zooming."""
+        if event.modifiers() == Qt.ControlModifier:
+            # Zoom com Ctrl + Mouse Wheel
+            delta = event.angleDelta().y()
+            if delta > 0:
+                self.zoom_in()
+            else:
+                self.zoom_out()
+            event.accept()
+        else:
+            # Scroll normal
+            super().wheelEvent(event)
+    
+    def zoom_in(self):
+        """Increase font size."""
+        current_font = self.font()
+        current_size = current_font.pointSize()
+        if current_size == -1:
+            current_size = current_font.pixelSize()
+            if current_size < 24:
+                current_font.setPixelSize(current_size + 1)
+                self.setFont(current_font)
+        else:
+            if current_size < 24:  # Limite máximo
+                current_font.setPointSize(current_size + 1)
+                self.setFont(current_font)
+    
+    def zoom_out(self):
+        """Decrease font size."""
+        current_font = self.font()
+        current_size = current_font.pointSize()
+        if current_size == -1:
+            current_size = current_font.pixelSize()
+            if current_size > 8:
+                current_font.setPixelSize(current_size - 1)
+                self.setFont(current_font)
+        else:
+            if current_size > 8:  # Limite mínimo
+                current_font.setPointSize(current_size - 1)
+                self.setFont(current_font)
+
+
+class ZoomableDialogTextEdit(QTextEdit):
+    """QTextEdit for dialogs with zoom functionality."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.base_font_size = 14  # Tamanho base da fonte para diálogos
+        # Definir fonte inicial
+        font = QFont("monospace")
+        font.setPointSize(self.base_font_size)
+        self.setFont(font)
+        
+    def wheelEvent(self, event):
+        """Handle mouse wheel events for zooming."""
+        if event.modifiers() == Qt.ControlModifier:
+            # Zoom com Ctrl + Mouse Wheel
+            delta = event.angleDelta().y()
+            if delta > 0:
+                self.zoom_in()
+            else:
+                self.zoom_out()
+            event.accept()
+        else:
+            # Scroll normal
+            super().wheelEvent(event)
+    
+    def zoom_in(self):
+        """Increase font size."""
+        current_font = self.font()
+        current_size = current_font.pointSize()
+        if current_size < 28:  # Limite máximo
+            current_font.setPointSize(current_size + 1)
+            self.setFont(current_font)
+    
+    def zoom_out(self):
+        """Decrease font size."""
+        current_font = self.font()
+        current_size = current_font.pointSize()
+        if current_size > 8:  # Limite mínimo
+            current_font.setPointSize(current_size - 1)
+            self.setFont(current_font)
+
+
 class StatisticsTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setup_ui()
+        self.init_ui()
 
-    def setup_ui(self):
+    def init_ui(self):
         """Configura a interface principal."""
-        # Scroll area para melhor organização
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        layout = QVBoxLayout()
+        layout.setSpacing(15)
+        layout.setContentsMargins(15, 15, 15, 15)
         
-        # Widget principal
-        main_widget = QWidget()
-        layout = QVBoxLayout(main_widget)
+        # Create main splitter for better layout
+        main_splitter = QSplitter(Qt.Horizontal)
         
-        # Seção única integrada de estatística
-        layout.addWidget(self.create_integrated_statistics_section())
-        layout.addStretch()
+        # Left panel - Input and controls
+        left_widget = QWidget()
+        left_layout = QVBoxLayout()
+        left_layout.setSpacing(15)
         
-        scroll.setWidget(main_widget)
+        # Input section
+        input_group = self.create_input_section()
+        left_layout.addWidget(input_group)
         
-        # Layout principal
-        main_layout = QVBoxLayout(self)
-        main_layout.addWidget(scroll)
+        # Analysis options
+        analysis_group = self.create_analysis_section()
+        left_layout.addWidget(analysis_group)
+        
+        # Result options
+        options_group = self.create_options_section()
+        left_layout.addWidget(options_group)
+        
+        left_layout.addStretch()
+        left_widget.setLayout(left_layout)
+        
+        # Right panel - Results
+        right_widget = QWidget()
+        right_layout = QVBoxLayout()
+        right_layout.setSpacing(15)
+        
+        # Results section
+        results_group = self.create_results_section()
+        right_layout.addWidget(results_group)
+        
+        right_widget.setLayout(right_layout)
+        
+        # Add to splitter
+        main_splitter.addWidget(left_widget)
+        main_splitter.addWidget(right_widget)
+        main_splitter.setStretchFactor(0, 1)  # Left panel
+        main_splitter.setStretchFactor(1, 2)  # Right panel (larger)
+        
+        layout.addWidget(main_splitter)
+        self.setLayout(layout)
 
-    def create_integrated_statistics_section(self):
-        """Cria a seção integrada de estatística com estatística descritiva, intervalos de confiança e testes de hipóteses."""
-        section = QGroupBox("Análise Estatística Completa")
-        section.setStyleSheet("""
-            QGroupBox {
-                font-weight: bold;
-                font-size: 14px;
-                border: 2px solid #cccccc;
-                border-radius: 5px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-            }
-        """)
-        layout = QVBoxLayout(section)
+    def create_input_section(self) -> QGroupBox:
+        """Create the input section."""
+        group = QGroupBox("Entrada de Dados")
+        layout = QFormLayout()
+        layout.setVerticalSpacing(12)
+        layout.setHorizontalSpacing(15)
         
-        # Sub-seção: Entrada de dados
-        data_group = QGroupBox("Entrada de Dados")
-        data_layout = QVBoxLayout(data_group)
+        # Data input
+        self.data_input = ZoomableDataInput()
+        self.data_input.setPlaceholderText("Digite os valores separados por vírgula ou quebra de linha")
+        self.data_input.setMaximumHeight(100)
+        layout.addRow("Dados:", self.data_input)
         
-        # Área de entrada de dados
-        form_layout = QFormLayout()
-        
-        self.data_input = QTextEdit()
-        self.data_input.setPlaceholderText("Digite os valores separados por vírgula ou quebra de linha\nExemplo: 1.2, 3.4, 5.6, 7.8")
-        self.data_input.setMaximumHeight(80)
-        form_layout.addRow("Dados:", self.data_input)
-        
+        # Reference value input
         self.reference_input = QLineEdit()
-        self.reference_input.setPlaceholderText("Opcional - para desvio absoluto")
-        form_layout.addRow("Valor de referência:", self.reference_input)
+        self.reference_input.setPlaceholderText("Ex: 5.0")
+        self.reference_input.setMinimumHeight(30)
+        layout.addRow("Valor de Referência (opcional):", self.reference_input)
         
-        data_layout.addLayout(form_layout)
+        # Buttons row
+        buttons_layout = QHBoxLayout()
         
-        # Botão de análise geral
-        analyze_btn = QPushButton("Analisar Dados Completos")
-        analyze_btn.clicked.connect(self.analyze_complete_statistics)
-        data_layout.addWidget(analyze_btn)
+        self.analyze_button = QPushButton("Analisar")
+        self.analyze_button.setMinimumHeight(35)
+        self.analyze_button.setStyleSheet("QPushButton { font-weight: bold; }")
+        self.analyze_button.clicked.connect(self.analyze_complete_statistics)
+        buttons_layout.addWidget(self.analyze_button)
         
-        layout.addWidget(data_group)
+        self.clear_button = QPushButton("Limpar")
+        self.clear_button.setMinimumHeight(35)
+        self.clear_button.setStyleSheet("QPushButton { font-weight: bold; }")
+        self.clear_button.clicked.connect(self.clear_inputs)
+        buttons_layout.addWidget(self.clear_button)
         
-        # Sub-seção: Estatística Descritiva
-        desc_group = QGroupBox("1. Estatística Descritiva")
-        desc_layout = QVBoxLayout(desc_group)
+        layout.addRow("", buttons_layout)
         
-        # Botão específico para estatística descritiva
-        desc_btn = QPushButton("Calcular Estatísticas Descritivas")
-        desc_btn.clicked.connect(self.calculate_descriptive_stats)
-        desc_layout.addWidget(desc_btn)
+        group.setLayout(layout)
+        return group
+
+    def create_analysis_section(self) -> QGroupBox:
+        """Create analysis options section."""
+        group = QGroupBox("Análises Específicas")
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
         
-        # Resultado da estatística descritiva
-        self.descriptive_result = QTextEdit()
-        self.descriptive_result.setMinimumHeight(200)
-        self.descriptive_result.setReadOnly(True)
-        self.descriptive_result.setStyleSheet("font-family: monospace; font-size: 11px;")
-        self.descriptive_result.setPlaceholderText("Os resultados da estatística descritiva aparecerão aqui...")
-        desc_layout.addWidget(self.descriptive_result)
+        # Analysis buttons
+        analyses = [
+            ("Intervalos de Confiança", self.show_confidence_dialog),
+            ("Teste t", self.show_t_test_dialog),
+            ("Teste F", self.show_f_test_dialog)
+        ]
         
-        # Botão para tela cheia da estatística descritiva
-        desc_fullscreen_btn = QPushButton("Ver Estatística Descritiva em Tela Cheia")
-        desc_fullscreen_btn.clicked.connect(lambda: self.show_fullscreen_result(
-            self.descriptive_result, "Estatística Descritiva"
-        ))
-        desc_layout.addWidget(desc_fullscreen_btn)
+        for text, handler in analyses:
+            btn = QPushButton(text)
+            btn.setMinimumHeight(35)
+            btn.setStyleSheet("QPushButton { font-weight: bold; }")
+            btn.clicked.connect(handler)
+            layout.addWidget(btn)
         
-        layout.addWidget(desc_group)
+        group.setLayout(layout)
+        return group
+
+    def create_options_section(self) -> QGroupBox:
+        """Create result options section."""
+        group = QGroupBox("Opções de Resultado")
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
         
-        # Sub-seção: Intervalos de Confiança (dentro da estatística descritiva)
-        conf_group = QGroupBox("2. Intervalos de Confiança")
-        conf_layout = QVBoxLayout(conf_group)
+        # Export buttons
+        export_layout = QHBoxLayout()
         
-        # Controles para intervalo de confiança
-        conf_controls_layout = QFormLayout()
+        self.copy_button = QPushButton("Copiar")
+        self.copy_button.setMinimumHeight(35)
+        self.copy_button.setStyleSheet("QPushButton { font-weight: bold; }")
+        self.copy_button.clicked.connect(lambda: self.copy_to_clipboard(self.result_text.toPlainText()))
+        export_layout.addWidget(self.copy_button)
         
-        self.confidence_level = QDoubleSpinBox()
-        self.confidence_level.setRange(0.01, 0.99)
-        self.confidence_level.setValue(0.95)
-        self.confidence_level.setSingleStep(0.01)
-        self.confidence_level.setDecimals(3)
-        conf_controls_layout.addRow("Nível de confiança:", self.confidence_level)
+        self.save_button = QPushButton("Salvar")
+        self.save_button.setMinimumHeight(35)
+        self.save_button.setStyleSheet("QPushButton { font-weight: bold; }")
+        self.save_button.clicked.connect(lambda: self.save_to_file(self.result_text.toPlainText(), "Análise Estatística"))
+        export_layout.addWidget(self.save_button)
         
-        self.ic_method = QComboBox()
-        self.ic_method.addItems(["Auto (n<30: t, n≥30: z)", "t de Student", "Distribuição Normal (z)"])
-        conf_controls_layout.addRow("Método:", self.ic_method)
+        layout.addLayout(export_layout)
         
-        conf_layout.addLayout(conf_controls_layout)
+        group.setLayout(layout)
+        return group
+
+    def create_results_section(self) -> QGroupBox:
+        """Create the results section."""
+        group = QGroupBox("Resultados da Análise Estatística")
+        layout = QVBoxLayout()
         
-        conf_btn = QPushButton("Calcular Intervalo de Confiança")
-        conf_btn.clicked.connect(self.calculate_confidence_interval)
-        conf_layout.addWidget(conf_btn)
+        # Results display
+        self.result_text = ZoomableTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMinimumHeight(500)
+        self.result_text.setPlaceholderText("Os resultados da análise estatística aparecerão aqui...")
+        layout.addWidget(self.result_text)
         
-        # Resultado do intervalo de confiança
-        self.ic_result = QTextEdit()
-        self.ic_result.setMinimumHeight(150)
-        self.ic_result.setReadOnly(True)
-        self.ic_result.setStyleSheet("font-family: monospace; font-size: 11px;")
-        self.ic_result.setPlaceholderText("Os resultados do intervalo de confiança aparecerão aqui...")
-        conf_layout.addWidget(self.ic_result)
-        
-        # Botão para tela cheia do intervalo de confiança
-        conf_fullscreen_btn = QPushButton("Ver Intervalos de Confiança em Tela Cheia")
-        conf_fullscreen_btn.clicked.connect(lambda: self.show_fullscreen_result(
-            self.ic_result, "Intervalo de Confiança"
-        ))
-        conf_layout.addWidget(conf_fullscreen_btn)
-        
-        layout.addWidget(conf_group)
-        
-        # Sub-seção: Testes de Hipóteses (dentro da estatística descritiva)
-        hyp_group = QGroupBox("3. Testes de Hipóteses")
-        hyp_layout = QVBoxLayout(hyp_group)
-        
-        # Teste t
-        t_test_group = QGroupBox("Teste t (Comparar duas médias)")
-        t_test_layout = QVBoxLayout(t_test_group)
-        
-        form_t = QFormLayout()
-        self.t_data1_input = QTextEdit()
-        self.t_data1_input.setPlaceholderText("Amostra 1: valores separados por vírgula")
-        self.t_data1_input.setMaximumHeight(60)
-        form_t.addRow("Dados 1:", self.t_data1_input)
-        
-        self.t_data2_input = QTextEdit()
-        self.t_data2_input.setPlaceholderText("Amostra 2: valores separados por vírgula")
-        self.t_data2_input.setMaximumHeight(60)
-        form_t.addRow("Dados 2:", self.t_data2_input)
-        
-        self.t_confidence = QDoubleSpinBox()
-        self.t_confidence.setRange(0.01, 0.99)
-        self.t_confidence.setValue(0.95)
-        self.t_confidence.setSingleStep(0.01)
-        self.t_confidence.setDecimals(3)
-        form_t.addRow("Nível de confiança:", self.t_confidence)
-        
-        t_test_layout.addLayout(form_t)
-        
-        btn_t = QPushButton("Realizar Teste t")
-        btn_t.clicked.connect(self.calculate_t_test)
-        t_test_layout.addWidget(btn_t)
-        
-        self.t_result = QTextEdit()
-        self.t_result.setReadOnly(True)
-        self.t_result.setMinimumHeight(120)
-        self.t_result.setStyleSheet("font-family: monospace; font-size: 11px;")
-        t_test_layout.addWidget(self.t_result)
-        
-        # Botão para tela cheia do teste t
-        t_fullscreen_btn = QPushButton("Ver Teste t em Tela Cheia")
-        t_fullscreen_btn.clicked.connect(lambda: self.show_fullscreen_result(
-            self.t_result, "Teste t"
-        ))
-        t_test_layout.addWidget(t_fullscreen_btn)
-        
-        hyp_layout.addWidget(t_test_group)
-        
-        # Teste F
-        f_test_group = QGroupBox("Teste F (Comparar duas variâncias)")
-        f_test_layout = QVBoxLayout(f_test_group)
-        
-        form_f = QFormLayout()
-        self.f_data1_input = QTextEdit()
-        self.f_data1_input.setPlaceholderText("Amostra 1: valores separados por vírgula")
-        self.f_data1_input.setMaximumHeight(60)
-        form_f.addRow("Dados 1:", self.f_data1_input)
-        
-        self.f_data2_input = QTextEdit()
-        self.f_data2_input.setPlaceholderText("Amostra 2: valores separados por vírgula")
-        self.f_data2_input.setMaximumHeight(60)
-        form_f.addRow("Dados 2:", self.f_data2_input)
-        
-        self.f_confidence = QDoubleSpinBox()
-        self.f_confidence.setRange(0.01, 0.99)
-        self.f_confidence.setValue(0.95)
-        self.f_confidence.setSingleStep(0.01)
-        self.f_confidence.setDecimals(3)
-        form_f.addRow("Nível de confiança:", self.f_confidence)
-        
-        f_test_layout.addLayout(form_f)
-        
-        btn_f = QPushButton("Realizar Teste F")
-        btn_f.clicked.connect(self.calculate_f_test)
-        f_test_layout.addWidget(btn_f)
-        
-        self.f_result = QTextEdit()
-        self.f_result.setReadOnly(True)
-        self.f_result.setMinimumHeight(120)
-        self.f_result.setStyleSheet("font-family: monospace; font-size: 11px;")
-        f_test_layout.addWidget(self.f_result)
-        
-        # Botão para tela cheia do teste F
-        f_fullscreen_btn = QPushButton("Ver Teste F em Tela Cheia")
-        f_fullscreen_btn.clicked.connect(lambda: self.show_fullscreen_result(
-            self.f_result, "Teste F"
-        ))
-        f_test_layout.addWidget(f_fullscreen_btn)
-        
-        hyp_layout.addWidget(f_test_group)
-        
-        layout.addWidget(hyp_group)
-        
-        return section
+        group.setLayout(layout)
+        return group
 
     def analyze_complete_statistics(self):
-        """Executa análise estatística completa em todos os campos."""
-        self.calculate_descriptive_stats()
-        self.calculate_confidence_interval()
-        # Os testes de hipóteses precisam de dados separados, então não são executados automaticamente
-
-    # Métodos de cálculo
-    def calculate_descriptive_stats(self):
+        """Executa análise estatística completa."""
         try:
             # Processar dados
             raw_text = self.data_input.toPlainText()
             data = self.parse_data(raw_text)
             
             if not data:
-                self.descriptive_result.setText("Erro: Nenhum dado válido inserido")
+                self.result_text.setText("Erro: Nenhum dado válido inserido")
                 return
             
             # Valor de referência opcional
@@ -294,19 +373,24 @@ class StatisticsTab(QWidget):
             cv = coefficient_of_variation(data)
             corr_factor = correction_factor(len(data))
             
+            # Intervalos de confiança
+            ci_95 = confidence_interval_mean_small_n(data, 0.95) if len(data) < 30 else confidence_interval_mean_large_n(data, 0.95)
+            
             # Formatação dos resultados
-            result = f"ESTATÍSTICA DESCRITIVA\n"
-            result += f"{'='*50}\n"
+            result = f"ANÁLISE ESTATÍSTICA COMPLETA\n"
+            result += f"{'='*60}\n\n"
             result += f"DADOS ANALISADOS: {data}\n"
-            result += f"{'='*50}\n"
+            result += f"{'='*60}\n\n"
+            
+            result += f"ESTATÍSTICA DESCRITIVA\n"
+            result += f"{'-'*30}\n"
             result += f"n (tamanho da amostra): {len(data)}\n"
             result += f"Média (x̄): {mean_val:.6g}\n"
             result += f"Variância amostral (s²): {variance:.6g}\n"
             result += f"Desvio padrão amostral (s): {std_dev:.6g}\n"
             result += f"Desvio médio: {mean_dev:.6g}\n"
             result += f"Coeficiente de variação (CV): {cv:.3f}%\n"
-            result += f"Fator de correção: {corr_factor:.6g}\n"
-            result += f"{'='*50}\n"
+            result += f"Fator de correção: {corr_factor:.6g}\n\n"
             
             if reference is not None:
                 result += f"DESVIOS ABSOLUTOS (referência = {reference}):\n"
@@ -317,42 +401,85 @@ class StatisticsTab(QWidget):
                 for i, dev in enumerate(abs_dev):
                     result += f"  |x{i+1} - x̄| = |{data[i]} - {mean_val:.6g}| = {dev:.6g}\n"
             
-            self.descriptive_result.setText(result)
+            result += f"\n\nINTERVALO DE CONFIANÇA (95%)\n"
+            result += f"{'-'*30}\n"
+            method_name = "t de Student" if len(data) < 30 else "Distribuição Normal (z)"
+            result += f"Método: {method_name} (n = {len(data)})\n"
+            result += f"Margem de erro: ±{ci_95['margin_error']:.6g}\n"
+            result += f"Intervalo: [{ci_95['lower_limit']:.6g}, {ci_95['upper_limit']:.6g}]\n"
+            
+            self.result_text.setText(result)
             
         except Exception as e:
-            self.descriptive_result.setText(f"Erro: {str(e)}")
-            import traceback
-            print(f"Debug - Erro detalhado: {traceback.format_exc()}")
+            self.result_text.setText(f"Erro: {str(e)}")
 
-    def calculate_confidence_interval(self):
+    def calculate_descriptive_stats(self):
+        """Calcula apenas estatística descritiva."""
+        self.analyze_complete_statistics()
+
+    def show_confidence_dialog(self):
+        """Mostra diálogo simples para intervalos de confiança."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Intervalos de Confiança")
+        dialog.setMinimumSize(500, 400)
+        
+        layout = QVBoxLayout()
+        
+        # Instruções
+        instructions = QLabel("Usa os dados do campo principal. Configure o nível de confiança:")
+        layout.addWidget(instructions)
+        
+        # Controles
+        form_layout = QFormLayout()
+        
+        confidence_input = QDoubleSpinBox()
+        confidence_input.setRange(0.01, 0.99)
+        confidence_input.setValue(0.95)
+        confidence_input.setSingleStep(0.01)
+        confidence_input.setDecimals(3)
+        form_layout.addRow("Nível de confiança:", confidence_input)
+        
+        layout.addLayout(form_layout)
+        
+        # Resultado
+        result_text = ZoomableDialogTextEdit()
+        result_text.setReadOnly(True)
+        result_text.setMinimumHeight(250)
+        layout.addWidget(result_text)
+        
+        # Botões
+        buttons_layout = QHBoxLayout()
+        
+        calc_btn = QPushButton("Calcular")
+        calc_btn.clicked.connect(lambda: self.calculate_confidence_dialog(confidence_input.value(), result_text))
+        buttons_layout.addWidget(calc_btn)
+        
+        close_btn = QPushButton("Fechar")
+        close_btn.clicked.connect(dialog.close)
+        buttons_layout.addWidget(close_btn)
+        
+        layout.addLayout(buttons_layout)
+        dialog.setLayout(layout)
+        dialog.exec()
+
+    def calculate_confidence_dialog(self, confidence, result_widget):
+        """Calcula intervalo de confiança no diálogo."""
         try:
-            # Usar os mesmos dados da estatística descritiva
             data = self.parse_data(self.data_input.toPlainText())
             if not data:
-                self.ic_result.setText("Erro: Nenhum dado válido inserido")
+                result_widget.setText("Erro: Nenhum dado válido inserido no campo principal")
                 return
             
-            confidence = self.confidence_level.value()
-            method = self.ic_method.currentText()
-            
-            # Escolher método
-            if method.startswith("Auto"):
-                if len(data) < 30:
-                    result = confidence_interval_mean_small_n(data, confidence)
-                    method_used = "t de Student"
-                else:
-                    result = confidence_interval_mean_large_n(data, confidence)
-                    method_used = "Distribuição Normal (z)"
-            elif "Student" in method:
+            if len(data) < 30:
                 result = confidence_interval_mean_small_n(data, confidence)
                 method_used = "t de Student"
             else:
                 result = confidence_interval_mean_large_n(data, confidence)
                 method_used = "Distribuição Normal (z)"
             
-            # Formatação dos resultados
             output = f"INTERVALO DE CONFIANÇA\n"
             output += f"{'='*40}\n"
+            output += f"Dados: {data}\n"
             output += f"Método: {method_used}\n"
             output += f"Nível de confiança: {confidence*100:.1f}%\n"
             output += f"n: {result['n']}\n"
@@ -368,25 +495,76 @@ class StatisticsTab(QWidget):
             output += f"Margem de erro: ±{result['margin_error']:.6g}\n"
             output += f"\nINTERVALO: [{result['lower_limit']:.6g}, {result['upper_limit']:.6g}]"
             
-            self.ic_result.setText(output)
+            result_widget.setText(output)
             
         except Exception as e:
-            self.ic_result.setText(f"Erro: {str(e)}")
+            result_widget.setText(f"Erro: {str(e)}")
 
-    def calculate_t_test(self):
+    def show_t_test_dialog(self):
+        """Mostra diálogo para teste t."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Teste t - Comparação de Médias")
+        dialog.setMinimumSize(500, 500)
+        
+        layout = QVBoxLayout()
+        
+        # Entrada de dados
+        form_layout = QFormLayout()
+        
+        data1_input = ZoomableDataInput()
+        data1_input.setPlaceholderText("Amostra 1: valores separados por vírgula")
+        data1_input.setMaximumHeight(60)
+        form_layout.addRow("Dados 1:", data1_input)
+        
+        data2_input = ZoomableDataInput()
+        data2_input.setPlaceholderText("Amostra 2: valores separados por vírgula")
+        data2_input.setMaximumHeight(60)
+        form_layout.addRow("Dados 2:", data2_input)
+        
+        confidence_input = QDoubleSpinBox()
+        confidence_input.setRange(0.01, 0.99)
+        confidence_input.setValue(0.95)
+        confidence_input.setSingleStep(0.01)
+        confidence_input.setDecimals(3)
+        form_layout.addRow("Nível de confiança:", confidence_input)
+        
+        layout.addLayout(form_layout)
+        
+        # Resultado
+        result_text = ZoomableDialogTextEdit()
+        result_text.setReadOnly(True)
+        result_text.setMinimumHeight(250)
+        layout.addWidget(result_text)
+        
+        # Botões
+        buttons_layout = QHBoxLayout()
+        
+        calc_btn = QPushButton("Calcular Teste t")
+        calc_btn.clicked.connect(lambda: self.calculate_t_test_dialog(
+            data1_input.toPlainText(), data2_input.toPlainText(), 
+            confidence_input.value(), result_text))
+        buttons_layout.addWidget(calc_btn)
+        
+        close_btn = QPushButton("Fechar")
+        close_btn.clicked.connect(dialog.close)
+        buttons_layout.addWidget(close_btn)
+        
+        layout.addLayout(buttons_layout)
+        dialog.setLayout(layout)
+        dialog.exec()
+
+    def calculate_t_test_dialog(self, data1_text, data2_text, confidence, result_widget):
+        """Calcula teste t no diálogo."""
         try:
-            # Processar dados
-            data1 = self.parse_data(self.t_data1_input.toPlainText())
-            data2 = self.parse_data(self.t_data2_input.toPlainText())
+            data1 = self.parse_data(data1_text)
+            data2 = self.parse_data(data2_text)
             
             if not data1 or not data2:
-                self.t_result.setText("Erro: Dados inválidos em uma ou ambas as amostras")
+                result_widget.setText("Erro: Dados inválidos em uma ou ambas as amostras")
                 return
             
-            confidence = self.t_confidence.value()
             result = t_test_two_means(data1, data2, confidence)
             
-            # Formatação dos resultados
             output = f"TESTE t (DUAS AMOSTRAS)\n"
             output += f"{'='*40}\n"
             output += f"H₀: μ₁ = μ₂\n"
@@ -401,25 +579,76 @@ class StatisticsTab(QWidget):
             output += f"DECISÃO: {'Rejeitar H₀' if result['reject_h0'] else 'Não rejeitar H₀'}\n"
             output += f"CONCLUSÃO: {result['conclusion']}"
             
-            self.t_result.setText(output)
+            result_widget.setText(output)
             
         except Exception as e:
-            self.t_result.setText(f"Erro: {str(e)}")
+            result_widget.setText(f"Erro: {str(e)}")
 
-    def calculate_f_test(self):
+    def show_f_test_dialog(self):
+        """Mostra diálogo para teste F."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Teste F - Comparação de Variâncias")
+        dialog.setMinimumSize(500, 500)
+        
+        layout = QVBoxLayout()
+        
+        # Entrada de dados
+        form_layout = QFormLayout()
+        
+        data1_input = ZoomableDataInput()
+        data1_input.setPlaceholderText("Amostra 1: valores separados por vírgula")
+        data1_input.setMaximumHeight(60)
+        form_layout.addRow("Dados 1:", data1_input)
+        
+        data2_input = ZoomableDataInput()
+        data2_input.setPlaceholderText("Amostra 2: valores separados por vírgula")
+        data2_input.setMaximumHeight(60)
+        form_layout.addRow("Dados 2:", data2_input)
+        
+        confidence_input = QDoubleSpinBox()
+        confidence_input.setRange(0.01, 0.99)
+        confidence_input.setValue(0.95)
+        confidence_input.setSingleStep(0.01)
+        confidence_input.setDecimals(3)
+        form_layout.addRow("Nível de confiança:", confidence_input)
+        
+        layout.addLayout(form_layout)
+        
+        # Resultado
+        result_text = ZoomableDialogTextEdit()
+        result_text.setReadOnly(True)
+        result_text.setMinimumHeight(250)
+        layout.addWidget(result_text)
+        
+        # Botões
+        buttons_layout = QHBoxLayout()
+        
+        calc_btn = QPushButton("Calcular Teste F")
+        calc_btn.clicked.connect(lambda: self.calculate_f_test_dialog(
+            data1_input.toPlainText(), data2_input.toPlainText(), 
+            confidence_input.value(), result_text))
+        buttons_layout.addWidget(calc_btn)
+        
+        close_btn = QPushButton("Fechar")
+        close_btn.clicked.connect(dialog.close)
+        buttons_layout.addWidget(close_btn)
+        
+        layout.addLayout(buttons_layout)
+        dialog.setLayout(layout)
+        dialog.exec()
+
+    def calculate_f_test_dialog(self, data1_text, data2_text, confidence, result_widget):
+        """Calcula teste F no diálogo."""
         try:
-            # Processar dados
-            data1 = self.parse_data(self.f_data1_input.toPlainText())
-            data2 = self.parse_data(self.f_data2_input.toPlainText())
+            data1 = self.parse_data(data1_text)
+            data2 = self.parse_data(data2_text)
             
             if not data1 or not data2:
-                self.f_result.setText("Erro: Dados inválidos em uma ou ambas as amostras")
+                result_widget.setText("Erro: Dados inválidos em uma ou ambas as amostras")
                 return
             
-            confidence = self.f_confidence.value()
             result = f_test_two_variances(data1, data2, confidence)
             
-            # Formatação dos resultados
             output = f"TESTE F (DUAS VARIÂNCIAS)\n"
             output += f"{'='*40}\n"
             output += f"H₀: σ₁² = σ₂²\n"
@@ -435,10 +664,16 @@ class StatisticsTab(QWidget):
             output += f"DECISÃO: {'Rejeitar H₀' if result['reject_h0'] else 'Não rejeitar H₀'}\n"
             output += f"CONCLUSÃO: {result['conclusion']}"
             
-            self.f_result.setText(output)
+            result_widget.setText(output)
             
         except Exception as e:
-            self.f_result.setText(f"Erro: {str(e)}")
+            result_widget.setText(f"Erro: {str(e)}")
+
+    def clear_inputs(self):
+        """Limpa os campos de entrada."""
+        self.data_input.clear()
+        self.reference_input.clear()
+        self.result_text.clear()
 
     def parse_data(self, text: str) -> list[float]:
         """Converte texto em lista de números."""
@@ -471,75 +706,15 @@ class StatisticsTab(QWidget):
                         print(f"Debug - Não foi possível converter '{item}' para número")
                         continue
         
-        print(f"Debug - Texto original: '{text}'")
-        print(f"Debug - Itens encontrados: {raw_items}")
-        print(f"Debug - Valores convertidos: {values}")
-        print(f"Debug - Número de valores: {len(values)}")
-        
         return values
-
-    def show_fullscreen_result(self, source_widget: QTextEdit, title: str):
-        """Mostra o resultado em uma janela de tela cheia."""
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"HeisenLab - {title}")
-        dialog.setWindowState(Qt.WindowMaximized)  # Maximizar janela
-        
-        layout = QVBoxLayout(dialog)
-        
-        # Título
-        title_label = QLabel(f"{title}")
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin: 10px;")
-        layout.addWidget(title_label)
-        
-        # Área de texto expandida
-        fullscreen_text = QTextEdit()
-        fullscreen_text.setReadOnly(True)
-        fullscreen_text.setPlainText(source_widget.toPlainText())
-        fullscreen_text.setStyleSheet("""
-            QTextEdit {
-                font-weight: bold; 
-                font-family: 'Courier New', monospace; 
-                font-size: 12px;
-                padding: 15px;
-                border: 2px solid #3498db;
-                border-radius: 8px;
-            }
-        """)
-        layout.addWidget(fullscreen_text)
-        
-        # Botões
-        button_layout = QHBoxLayout()
-        
-        # Botão copiar
-        btn_copy = QPushButton("📋 Copiar para Área de Transferência")
-        btn_copy.clicked.connect(lambda: self.copy_to_clipboard(fullscreen_text.toPlainText()))
-        button_layout.addWidget(btn_copy)
-        
-        # Botão salvar
-        btn_save = QPushButton("💾 Salvar em Arquivo")
-        btn_save.clicked.connect(lambda: self.save_to_file(fullscreen_text.toPlainText(), title))
-        button_layout.addWidget(btn_save)
-        
-        button_layout.addStretch()
-        
-        # Botão fechar
-        btn_close = QPushButton("Fechar")
-        btn_close.clicked.connect(dialog.close)
-        button_layout.addWidget(btn_close)
-        
-        layout.addLayout(button_layout)
-        
-        dialog.exec()
 
     def copy_to_clipboard(self, text: str):
         """Copia o texto para a área de transferência."""
         try:
-            from PySide6.QtWidgets import QApplication
             clipboard = QApplication.clipboard()
             clipboard.setText(text)
             
             # Feedback visual (opcional)
-            from PySide6.QtWidgets import QMessageBox
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Information)
             msg.setWindowTitle("Sucesso")
@@ -553,7 +728,6 @@ class StatisticsTab(QWidget):
     def save_to_file(self, text: str, title: str):
         """Salva o texto em um arquivo."""
         try:
-            from PySide6.QtWidgets import QFileDialog
             import datetime
             
             # Sugerir nome do arquivo com timestamp
@@ -576,7 +750,6 @@ class StatisticsTab(QWidget):
                     file.write(text)
                 
                 # Feedback visual
-                from PySide6.QtWidgets import QMessageBox
                 msg = QMessageBox()
                 msg.setIcon(QMessageBox.Information)
                 msg.setWindowTitle("Sucesso")
@@ -585,7 +758,6 @@ class StatisticsTab(QWidget):
                 msg.exec()
                 
         except Exception as e:
-            from PySide6.QtWidgets import QMessageBox
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
             msg.setWindowTitle("Erro")
