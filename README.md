@@ -32,29 +32,52 @@ Aplicativo de Química Analítica com interface gráfica para cálculos químico
 
 ## Instalação
 
-### Opção 1: Instalação Rápida (Recomendada)
+### 🐧 Linux (Instalação Automática)
+```bash
+# 1. Clone o repositório
+git clone https://github.com/Cabral567/HeisenLab.git
+cd HeisenLab
+
+# 2. Execute o script de instalação
+./install_linux.sh
+
+# 3. Execute o HeisenLab
+./run_heisenlab.sh
+```
+
+**Distribuições suportadas:** Ubuntu, Debian, Fedora, CentOS, Arch Linux, Manjaro
+
+O script automaticamente:
+- Detecta sua distribuição Linux
+- Instala dependências do sistema (Qt6, Python, etc.)
+- Cria ambiente virtual isolado
+- Instala todas as dependências Python
+- Adiciona atalho no menu de aplicações
+- Cria script de desinstalação
+
+### 🪟 Windows
 ```bash
 # Baixe o arquivo setup.exe e execute
 setup.exe
 ```
 *Instalação automática com todas as dependências incluídas*
 
-### Opção 2: Instalação Manual
+### 🔧 Instalação Manual (Todas as Plataformas)
 ```bash
 # 1. Clone o repositório
-git clone <repository-url>
+git clone https://github.com/Cabral567/HeisenLab.git
 cd HeisenLab
 
 # 2. Crie ambiente virtual
-python -m venv .venv
+python -m venv venv
 
 # 3. Ative o ambiente virtual
-# No Windows (PowerShell):
-.\.venv\Scripts\Activate.ps1
-# No Windows (CMD):
-.\.venv\Scripts\activate.bat
-# No Linux/Mac:
-source .venv/bin/activate
+# Windows (PowerShell):
+venv\Scripts\Activate.ps1
+# Windows (CMD):
+venv\Scripts\activate.bat
+# Linux/Mac:
+source venv/bin/activate
 
 # 4. Instale dependências
 pip install -r requirements.txt
@@ -65,9 +88,28 @@ python main.py
 
 ### Requisitos do Sistema
 - **Python**: 3.8 ou superior
-- **Sistema Operacional**: Windows 10+, Linux, macOS
+- **Sistema Operacional**: Windows 10+, Linux, macOS  
 - **Memória RAM**: 4GB recomendado
-- **Espaço em disco**: 500MB livres
+- **Espaço em disco**: 2GB livres
+
+### Solução de Problemas (Linux)
+
+**Erro Qt6 não encontrado:**
+```bash
+# Ubuntu/Debian
+sudo apt install qt6-base-dev
+
+# Fedora
+sudo dnf install qt6-qtbase-devel
+
+# Arch Linux  
+sudo pacman -S qt6-base
+```
+
+**Desinstalação (Linux):**
+```bash
+./uninstall.sh
+```
 
 ## Principais Recursos
 
