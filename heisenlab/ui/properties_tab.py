@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QSplitter, QSizePolicy, QScrollArea, QDialog
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 
 from ..calculations import (
     calculate_molar_mass, parse_chemical_formula, PERIODIC_TABLE,
@@ -15,6 +16,7 @@ from ..calculations import (
     calculate_mass_concentration, calculate_ppm, calculate_ppb,
     MASS_CONVERSIONS, VOLUME_CONVERSIONS, CONCENTRATION_CONVERSIONS, PRESSURE_CONVERSIONS
 )
+from .statistics_tab import ZoomableDialogTextEdit
 
 
 class PropertiesTab(QWidget):
@@ -84,21 +86,14 @@ class PropertiesTab(QWidget):
         self.molar_mass_result.setMinimumHeight(30)
         self.molar_mass_result.setStyleSheet("font-weight: bold; font-size: 12px;")
         layout.addRow("Massa Molar (g/mol):", self.molar_mass_result)
-        
-        self.composition_result = QTextEdit()
+
+        self.composition_result = ZoomableDialogTextEdit()
         self.composition_result.setReadOnly(True)
         self.composition_result.setMinimumHeight(150)
-        # Removido setMaximumHeight para permitir redimensionamento
-        self.composition_result.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Permitir expansão
+        self.composition_result.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.composition_result.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.composition_result.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.composition_result.setStyleSheet("font-family: monospace; font-size: 11px;")
         layout.addRow("Composição:", self.composition_result)
-        
-        # Botão de tela cheia para composição
-        btn_composition_fullscreen = QPushButton("Ver Composição em Tela Cheia")
-        btn_composition_fullscreen.clicked.connect(lambda: self.show_fullscreen_result(self.composition_result, "Composição Química"))
-        layout.addRow(btn_composition_fullscreen)
         
         group.setLayout(layout)
         group.setMinimumHeight(350)
@@ -108,139 +103,147 @@ class PropertiesTab(QWidget):
         """Create the chemical properties calculations section."""
         group = QGroupBox("Cálculos de Propriedades")
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(15)
-        
+        main_layout.setSpacing(25)
+
         # === DENSIDADE ===
-        density_group = QGroupBox("Densidade (ρ = massa ÷ volume)")
+        density_group = QGroupBox()
+        density_group.setTitle("Densidade (ρ = massa ÷ volume)")
         density_layout = QGridLayout()
-        density_layout.setVerticalSpacing(8)
-        density_layout.setHorizontalSpacing(10)
-        
+        density_layout.setVerticalSpacing(12)
+        density_layout.setHorizontalSpacing(12)
+
         density_layout.addWidget(QLabel("Massa:"), 0, 0)
         self.density_mass = QLineEdit()
         self.density_mass.setPlaceholderText("Ex: 10")
         self.density_mass.setMinimumHeight(28)
         density_layout.addWidget(self.density_mass, 0, 1)
-        
+
         self.density_mass_unit = QComboBox()
         self.density_mass_unit.addItems(list(MASS_CONVERSIONS.keys()))
         self.density_mass_unit.setCurrentText("g")
         self.density_mass_unit.setMinimumHeight(28)
         density_layout.addWidget(self.density_mass_unit, 0, 2)
-        
+
         density_layout.addWidget(QLabel("Volume:"), 1, 0)
         self.density_volume = QLineEdit()
         self.density_volume.setPlaceholderText("Ex: 5")
         self.density_volume.setMinimumHeight(28)
         density_layout.addWidget(self.density_volume, 1, 1)
-        
+
         self.density_volume_unit = QComboBox()
         self.density_volume_unit.addItems(list(VOLUME_CONVERSIONS.keys()))
         self.density_volume_unit.setCurrentText("mL")
         self.density_volume_unit.setMinimumHeight(28)
         density_layout.addWidget(self.density_volume_unit, 1, 2)
-        
+
         density_calc_btn = QPushButton("Calcular Densidade")
         density_calc_btn.clicked.connect(self.calculate_density)
         density_calc_btn.setMinimumHeight(32)
-        density_calc_btn.setStyleSheet("QPushButton { font-weight: bold; }")
         density_layout.addWidget(density_calc_btn, 2, 0, 1, 3)
-        
+
         density_layout.addWidget(QLabel("Resultado:"), 3, 0)
         self.density_result = QLineEdit()
         self.density_result.setReadOnly(True)
         self.density_result.setMinimumHeight(28)
-        self.density_result.setStyleSheet("font-weight: bold; font-size: 12px;")
         density_layout.addWidget(self.density_result, 3, 1)
         density_layout.addWidget(QLabel("g/mL"), 3, 2)
-        
+
         density_group.setLayout(density_layout)
         main_layout.addWidget(density_group)
-        
+
+        # Separador visual
+        sep1 = QLabel()
+        sep1.setFixedHeight(2)
+        sep1.setStyleSheet("background: #444; margin: 10px 0;")
+        main_layout.addWidget(sep1)
+
         # === MOLARIDADE ===
-        molarity_group = QGroupBox("Molaridade (M = mols ÷ volume)")
+        molarity_group = QGroupBox()
+        molarity_group.setTitle("Molaridade (M = mols ÷ volume)")
         molarity_layout = QGridLayout()
-        molarity_layout.setVerticalSpacing(8)
-        molarity_layout.setHorizontalSpacing(10)
-        
+        molarity_layout.setVerticalSpacing(12)
+        molarity_layout.setHorizontalSpacing(12)
+
         molarity_layout.addWidget(QLabel("Número de mols:"), 0, 0)
         self.molarity_moles = QLineEdit()
         self.molarity_moles.setPlaceholderText("Ex: 0.5")
         self.molarity_moles.setMinimumHeight(28)
         molarity_layout.addWidget(self.molarity_moles, 0, 1)
         molarity_layout.addWidget(QLabel("mol"), 0, 2)
-        
+
         molarity_layout.addWidget(QLabel("Volume da solução:"), 1, 0)
         self.molarity_volume = QLineEdit()
         self.molarity_volume.setPlaceholderText("Ex: 500")
         self.molarity_volume.setMinimumHeight(28)
         molarity_layout.addWidget(self.molarity_volume, 1, 1)
-        
+
         self.molarity_volume_unit = QComboBox()
         self.molarity_volume_unit.addItems(list(VOLUME_CONVERSIONS.keys()))
         self.molarity_volume_unit.setCurrentText("mL")
         self.molarity_volume_unit.setMinimumHeight(28)
         molarity_layout.addWidget(self.molarity_volume_unit, 1, 2)
-        
+
         molarity_calc_btn = QPushButton("Calcular Molaridade")
         molarity_calc_btn.clicked.connect(self.calculate_molarity)
         molarity_calc_btn.setMinimumHeight(32)
-        molarity_calc_btn.setStyleSheet("QPushButton { font-weight: bold; }")
         molarity_layout.addWidget(molarity_calc_btn, 2, 0, 1, 3)
-        
+
         molarity_layout.addWidget(QLabel("Resultado:"), 3, 0)
         self.molarity_result = QLineEdit()
         self.molarity_result.setReadOnly(True)
         self.molarity_result.setMinimumHeight(28)
-        self.molarity_result.setStyleSheet("font-weight: bold; font-size: 12px;")
         molarity_layout.addWidget(self.molarity_result, 3, 1)
         molarity_layout.addWidget(QLabel("M"), 3, 2)
-        
+
         molarity_group.setLayout(molarity_layout)
         main_layout.addWidget(molarity_group)
-        
+
+        sep2 = QLabel()
+        sep2.setFixedHeight(2)
+        sep2.setStyleSheet("background: #444; margin: 10px 0;")
+        main_layout.addWidget(sep2)
+
         # === NÚMERO DE MOLS ===
-        moles_group = QGroupBox("Número de Mols (n = massa ÷ massa molar)")
+        moles_group = QGroupBox()
+        moles_group.setTitle("Número de Mols (n = massa ÷ massa molar)")
         moles_layout = QGridLayout()
-        moles_layout.setVerticalSpacing(8)
-        moles_layout.setHorizontalSpacing(10)
-        
+        moles_layout.setVerticalSpacing(12)
+        moles_layout.setHorizontalSpacing(12)
+
         moles_layout.addWidget(QLabel("Massa da substância:"), 0, 0)
         self.moles_mass = QLineEdit()
         self.moles_mass.setPlaceholderText("Ex: 18")
         self.moles_mass.setMinimumHeight(28)
         moles_layout.addWidget(self.moles_mass, 0, 1)
-        
+
         self.moles_mass_unit = QComboBox()
         self.moles_mass_unit.addItems(list(MASS_CONVERSIONS.keys()))
         self.moles_mass_unit.setCurrentText("g")
         self.moles_mass_unit.setMinimumHeight(28)
         moles_layout.addWidget(self.moles_mass_unit, 0, 2)
-        
+
         moles_layout.addWidget(QLabel("Massa molar:"), 1, 0)
         self.moles_molar_mass = QLineEdit()
         self.moles_molar_mass.setPlaceholderText("Ex: 18.015 (use a seção acima)")
         self.moles_molar_mass.setMinimumHeight(28)
         moles_layout.addWidget(self.moles_molar_mass, 1, 1)
         moles_layout.addWidget(QLabel("g/mol"), 1, 2)
-        
+
         moles_calc_btn = QPushButton("Calcular Número de Mols")
         moles_calc_btn.clicked.connect(self.calculate_moles)
         moles_calc_btn.setMinimumHeight(32)
-        moles_calc_btn.setStyleSheet("QPushButton { font-weight: bold; }")
         moles_layout.addWidget(moles_calc_btn, 2, 0, 1, 3)
-        
+
         moles_layout.addWidget(QLabel("Resultado:"), 3, 0)
         self.moles_result = QLineEdit()
         self.moles_result.setReadOnly(True)
         self.moles_result.setMinimumHeight(28)
-        self.moles_result.setStyleSheet("font-weight: bold; font-size: 12px;")
         moles_layout.addWidget(self.moles_result, 3, 1)
         moles_layout.addWidget(QLabel("mol"), 3, 2)
-        
+
         moles_group.setLayout(moles_layout)
         main_layout.addWidget(moles_group)
-        
+
         group.setLayout(main_layout)
         group.setMinimumHeight(500)
         return group
@@ -280,14 +283,12 @@ class PropertiesTab(QWidget):
         mass_convert_btn = QPushButton("Converter")
         mass_convert_btn.clicked.connect(self.convert_mass)
         mass_convert_btn.setMinimumHeight(32)
-        mass_convert_btn.setStyleSheet("QPushButton { font-weight: bold; }")
         mass_layout.addWidget(mass_convert_btn, 1, 0, 1, 2)
         
         mass_layout.addWidget(QLabel("Resultado:"), 1, 2)
         self.mass_result = QLineEdit()
         self.mass_result.setReadOnly(True)
         self.mass_result.setMinimumHeight(28)
-        self.mass_result.setStyleSheet("font-weight: bold; font-size: 12px;")
         mass_layout.addWidget(self.mass_result, 1, 3, 1, 3)
         
         mass_group.setLayout(mass_layout)
@@ -322,14 +323,12 @@ class PropertiesTab(QWidget):
         volume_convert_btn = QPushButton("Converter")
         volume_convert_btn.clicked.connect(self.convert_volume)
         volume_convert_btn.setMinimumHeight(32)
-        volume_convert_btn.setStyleSheet("QPushButton { font-weight: bold; }")
         volume_layout.addWidget(volume_convert_btn, 1, 0, 1, 2)
         
         volume_layout.addWidget(QLabel("Resultado:"), 1, 2)
         self.volume_result = QLineEdit()
         self.volume_result.setReadOnly(True)
         self.volume_result.setMinimumHeight(28)
-        self.volume_result.setStyleSheet("font-weight: bold; font-size: 12px;")
         volume_layout.addWidget(self.volume_result, 1, 3, 1, 3)
         
         volume_group.setLayout(volume_layout)
@@ -364,14 +363,12 @@ class PropertiesTab(QWidget):
         temp_convert_btn = QPushButton("Converter")
         temp_convert_btn.clicked.connect(self.convert_temperature)
         temp_convert_btn.setMinimumHeight(32)
-        temp_convert_btn.setStyleSheet("QPushButton { font-weight: bold; }")
         temp_layout.addWidget(temp_convert_btn, 1, 0, 1, 2)
         
         temp_layout.addWidget(QLabel("Resultado:"), 1, 2)
         self.temp_result = QLineEdit()
         self.temp_result.setReadOnly(True)
         self.temp_result.setMinimumHeight(28)
-        self.temp_result.setStyleSheet("font-weight: bold; font-size: 12px;")
         temp_layout.addWidget(self.temp_result, 1, 3, 1, 3)
         
         temp_group.setLayout(temp_layout)
