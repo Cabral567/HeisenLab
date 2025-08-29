@@ -32,7 +32,7 @@ Aplicativo de Química Analítica com interface gráfica para cálculos químico
 
 ## Instalação
 
-### 🐧 Linux (Instalação Automática)
+### Linux (Instalação Profissional)
 ```bash
 # 1. Clone o repositório
 git clone https://github.com/Cabral567/HeisenLab.git
@@ -40,29 +40,39 @@ cd HeisenLab
 
 # 2. Execute o script de instalação
 ./install_linux.sh
-
-# 3. Execute o HeisenLab
-./run_heisenlab.sh
 ```
+
+**O que o script faz:**
+- Instala o programa em `/opt/heisenlab` (padrão Linux)
+- Cria executável global: `heisenlab` (em `/usr/local/bin`)
+- Cria desinstalador global: `heisenlab-uninstall` (em `/usr/local/bin`)
+- Instala ícone e menu: `/usr/share/icons/hicolor/` e `/usr/share/applications/`
+- Integra com o menu do sistema (Education > HeisenLab)
+- Cria ambiente virtual isolado
+- Instala todas as dependências Python
+- Cria pastas de dados/configuração do usuário em `~/.local/share/heisenlab` e `~/.config/heisenlab`
 
 **Distribuições suportadas:** Ubuntu, Debian, Fedora, CentOS, Arch Linux, Manjaro
 
-O script automaticamente:
-- Detecta sua distribuição Linux
-- Instala dependências do sistema (Qt6, Python, etc.)
-- Cria ambiente virtual isolado
-- Instala todas as dependências Python
-- Adiciona atalho no menu de aplicações
-- Cria script de desinstalação
+**Como executar:**
+```bash
+heisenlab
+```
+Ou pelo menu do sistema: Aplicações > Educação > HeisenLab
 
-### 🪟 Windows
+**Como desinstalar:**
+```bash
+heisenlab-uninstall
+```
+
+### Windows
 ```bash
 # Baixe o arquivo setup.exe e execute
 setup.exe
 ```
 *Instalação automática com todas as dependências incluídas*
 
-### 🔧 Instalação Manual (Todas as Plataformas)
+### Instalação Manual (Todas as Plataformas)
 ```bash
 # 1. Clone o repositório
 git clone https://github.com/Cabral567/HeisenLab.git
@@ -108,7 +118,7 @@ sudo pacman -S qt6-base
 
 **Desinstalação (Linux):**
 ```bash
-./uninstall.sh
+heisenlab-uninstall
 ```
 
 ## Principais Recursos

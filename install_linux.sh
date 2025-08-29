@@ -445,37 +445,6 @@ EOF
     fi
 }
 
-# Criar tipo MIME personalizado
-create_mime_type() {
-    log_info "Registrando tipo MIME personalizado..."
-    
-    MIME_DIR="$HOME/.local/share/mime/packages"
-    MIME_FILE="$MIME_DIR/com.heisenlab.HeisenLab.xml"
-    
-    mkdir -p "$MIME_DIR"
-    
-    cat > "$MIME_FILE" << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
-  <mime-type type="application/x-heisenlab-project">
-    <comment>HeisenLab Project File</comment>
-    <comment xml:lang="pt">Arquivo de Projeto HeisenLab</comment>
-    <comment xml:lang="pt_BR">Arquivo de Projeto HeisenLab</comment>
-    <glob pattern="*.hlab"/>
-    <glob pattern="*.heisenlab"/>
-  </mime-type>
-</mime-info>
-EOF
-    
-    # Atualizar banco de dados MIME
-    if command -v update-mime-database >/dev/null 2>&1; then
-        update-mime-database "$HOME/.local/share/mime" 2>/dev/null || true
-        log_success "Tipo MIME registrado"
-    else
-        log_warning "update-mime-database não encontrado, tipo MIME pode não funcionar"
-    fi
-}
-
 # Configurar variáveis de ambiente
 setup_environment() {
     log_info "Configurando diretórios de dados do usuário..."
@@ -491,10 +460,7 @@ setup_environment() {
 
 # Criar desinstalador
 create_uninstaller() {
-# Criar desinstalador
-create_uninstaller() {
     log_info "Criando script de desinstalação..."
-    
     sudo tee "$BIN_DIR/heisenlab-uninstall" > /dev/null << 'EOF'
 #!/bin/bash
 # Script de desinstalação do HeisenLab
@@ -503,7 +469,7 @@ echo "Desinstalando HeisenLab..."
 
 # Verificar se está sendo executado como usuário normal
 if [[ $EUID -eq 0 ]]; then
-    echo "❌ Este script não deve ser executado como root!"
+    echo "Este script não deve ser executado como root!"
     echo "Execute como usuário normal: heisenlab-uninstall"
     exit 1
 fi
@@ -553,19 +519,17 @@ fi
 sudo rm -f "/usr/local/bin/heisenlab-uninstall"
 
 echo ""
-echo "🎉 HeisenLab desinstalado com sucesso!"
+echo "HeisenLab desinstalado com sucesso!"
 EOF
-    
     sudo chmod +x "$BIN_DIR/heisenlab-uninstall"
     log_success "Script de desinstalação criado: $BIN_DIR/heisenlab-uninstall"
     log_info "Para desinstalar: execute 'heisenlab-uninstall' no terminal"
-}
 }
 
 # Mostrar instruções finais
 show_final_instructions() {
     echo ""
-    log_success "🎉 Instalação do HeisenLab concluída com sucesso!"
+    log_success "Instalação do HeisenLab concluída com sucesso!"
     echo ""
     echo -e "${GREEN}Como executar o HeisenLab:${NC}"
     echo "  • No terminal: heisenlab"
