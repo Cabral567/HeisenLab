@@ -2,10 +2,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QFormLayout,
     QLabel, QLineEdit, QPushButton, QScrollArea, QSizePolicy, QTextEdit, QTabWidget,
     QComboBox, QCheckBox, QSpinBox, QSlider, QColorDialog, QFileDialog, QMessageBox,
-    QSplitter, QFrame
+    QSplitter, QFrame, QApplication  # adicionada QApplication
 )
 from PySide6.QtGui import QPixmap, QImage, QColor, QFont
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QEvent
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from rdkit import Chem
 from rdkit.Chem import Draw, AllChem, Descriptors, rdMolDescriptors, Crippen, Lipinski
@@ -13,130 +13,139 @@ import io
 from PIL import Image
 import py3Dmol
 import tempfile
-from ..bluebook_search import search_compound_in_bluebook, get_compound_suggestions
+import pubchempy as pcp
 import os
 import json
+import requests  # <-- adicionado
+
+
+# --- Novas classes utilitárias de zoom (melhor prática) ---
+class ZoomableTextEdit(QTextEdit):
+    """QTextEdit com zoom via Ctrl + Scroll (Shift acelera)."""
+    def __init__(self, base_point_size=11, min_factor=0.5, max_factor=3.0, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._base_size = base_point_size
+        self._zoom_factor = 1.0
+        self._min_factor = min_factor
+        self._max_factor = max_factor
+        self._apply_zoom()
+        self.setContextMenuPolicy(Qt.DefaultContextMenu)
+
+    def _apply_zoom(self):
+        # Usa stylesheet para sobrescrever qualquer font-size prévio
+        pt = self._base_size * self._zoom_factor
+        self.setStyleSheet(f"font-family: monospace; font-size: {pt:.2f}pt;")
+
+    def wheelEvent(self, event):
+        if QApplication.keyboardModifiers() & Qt.ControlModifier:
+            delta = event.angleDelta().y()
+            step_mul = 1.2 if (QApplication.keyboardModifiers() & Qt.ShiftModifier) else 1.1
+            if delta > 0:
+                self._zoom_factor = min(self._zoom_factor * step_mul, self._max_factor)
+            else:
+                self._zoom_factor = max(self._zoom_factor / step_mul, self._min_factor)
+            self._apply_zoom()
+            event.accept()
+        else:
+            super().wheelEvent(event)
+
+    def resetZoom(self):
+        self._zoom_factor = 1.0
+        self._apply_zoom()
 
 
 class ChemicalDrawTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.current_smiles = ""
+        self.zoom_factor = 1.0  # agora usado apenas para escala visual (como equations)
+        self.base_size = 600     # tamanho base fixo da imagem RDKit
+        self.text_zoom_factor = 1.0
+        self._text_widgets = []
+        self.image_label = None
+        self._base_mol_pixmap = None  # pixmap original (não escalado) para zoom tipo equations
         self.init_ui()
 
     def init_ui(self):
         layout = QVBoxLayout()
         layout.setSpacing(15)
         layout.setContentsMargins(15, 15, 15, 15)
-        
-        # Create main splitter for better layout
         main_splitter = QSplitter(Qt.Horizontal)
-        
-        # Left panel - Input and controls
         left_widget = QWidget()
         left_layout = QVBoxLayout()
         left_layout.setSpacing(15)
-        
-        # Input section
         input_group = self.create_input_section()
         left_layout.addWidget(input_group)
-        
-        # Drawing options
         options_group = self.create_drawing_options_section()
         left_layout.addWidget(options_group)
-        
-        # Molecule library
-        library_group = self.create_molecule_library_section()
-        left_layout.addWidget(library_group)
-        
+        # Removido: biblioteca de moléculas
         left_layout.addStretch()
         left_widget.setLayout(left_layout)
-        
-        # Right panel - Visualization
         right_widget = QWidget()
         right_layout = QVBoxLayout()
         right_layout.setSpacing(15)
-        
-        # Visualization tabs
         viz_tabs = QTabWidget()
-        
-        # 2D tab
         tab_2d = QWidget()
         tab_2d_layout = QVBoxLayout()
         drawing_group = self.create_drawing_section()
         tab_2d_layout.addWidget(drawing_group)
         tab_2d.setLayout(tab_2d_layout)
         viz_tabs.addTab(tab_2d, "Visualização 2D")
-        
-        # 3D tab
         tab_3d = QWidget()
         tab_3d_layout = QVBoxLayout()
         visualization_group = self.create_3d_section()
         tab_3d_layout.addWidget(visualization_group)
         tab_3d.setLayout(tab_3d_layout)
         viz_tabs.addTab(tab_3d, "Visualização 3D")
-        
-        # Properties tab
         tab_props = QWidget()
         tab_props_layout = QVBoxLayout()
         properties_group = self.create_properties_section()
         tab_props_layout.addWidget(properties_group)
         tab_props.setLayout(tab_props_layout)
         viz_tabs.addTab(tab_props, "Propriedades")
-        
         right_layout.addWidget(viz_tabs)
         right_widget.setLayout(right_layout)
-        
-        # Add to splitter
         main_splitter.addWidget(left_widget)
         main_splitter.addWidget(right_widget)
-        main_splitter.setStretchFactor(0, 1)  # Left panel
-        main_splitter.setStretchFactor(1, 2)  # Right panel (larger)
-        
+        main_splitter.setStretchFactor(0, 1)
+        main_splitter.setStretchFactor(1, 2)
         layout.addWidget(main_splitter)
         self.setLayout(layout)
+        # Registrar detailed_properties se já existir
+        if hasattr(self, 'detailed_properties'):
+            self.register_text_widget(self.detailed_properties, 11)
+        self.apply_text_zoom()
 
     def create_input_section(self) -> QGroupBox:
-        """Create the input section with enhanced features."""
+        """Create the input section with PubChem search only."""
         group = QGroupBox("Entrada de Moléculas")
         layout = QFormLayout()
         layout.setVerticalSpacing(12)
         layout.setHorizontalSpacing(15)
-        
-        # SMILES input
-        self.smiles_input = QLineEdit()
-        self.smiles_input.setPlaceholderText("Digite o SMILES da molécula (ex: CCO para etanol)")
-        self.smiles_input.setMinimumHeight(30)
-        self.smiles_input.returnPressed.connect(self.draw_molecule)
-        layout.addRow("SMILES:", self.smiles_input)
-        
-        # Name input
-        self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText("Nome da molécula (opcional)")
-        self.name_input.setMinimumHeight(30)
-        layout.addRow("Nome:", self.name_input)
-        
-        # Busca no Blue Book
-        bluebook_layout = QHBoxLayout()
-        self.bluebook_input = QLineEdit()
-        self.bluebook_input.setPlaceholderText("Nome do composto para buscar no Blue Book")
-        self.bluebook_input.setMinimumHeight(30)
-        bluebook_layout.addWidget(self.bluebook_input)
-        
-        self.bluebook_search_button = QPushButton("Buscar")
-        self.bluebook_search_button.setMinimumHeight(30)
-        self.bluebook_search_button.setStyleSheet("QPushButton { font-weight: bold; }")
-        self.bluebook_search_button.clicked.connect(self.search_bluebook)
-        bluebook_layout.addWidget(self.bluebook_search_button)
-        
-        layout.addRow("Blue Book:", bluebook_layout)
-        
+
+        # Busca no PubChem
+        pubchem_layout = QHBoxLayout()
+        self.pubchem_input = QLineEdit()
+        self.pubchem_input.setPlaceholderText("Nome do composto para buscar no PubChem")
+        self.pubchem_input.setMinimumHeight(30)
+        pubchem_layout.addWidget(self.pubchem_input)
+
+        self.pubchem_search_button = QPushButton("Buscar")
+        self.pubchem_search_button.setMinimumHeight(30)
+        self.pubchem_search_button.setStyleSheet("QPushButton { font-weight: bold; }")
+        self.pubchem_search_button.clicked.connect(self.search_pubchem)
+        pubchem_layout.addWidget(self.pubchem_search_button)
+
+        layout.addRow("PubChem:", pubchem_layout)
+
         # Resultado da busca
-        self.bluebook_result = QTextEdit()
-        self.bluebook_result.setReadOnly(True)
-        self.bluebook_result.setMaximumHeight(80)
-        self.bluebook_result.setStyleSheet("font-family: monospace; font-size: 10px;")
-        self.bluebook_result.setPlaceholderText("Resultado da busca no Blue Book aparecerá aqui...")
-        layout.addRow("Resultado:", self.bluebook_result)
+        self.pubchem_result = ZoomableTextEdit(base_point_size=10)
+        self.pubchem_result.setReadOnly(True)
+        self.pubchem_result.setMaximumHeight(80)
+        # Removido font-size fixo para permitir zoom
+        self.pubchem_result.setPlaceholderText("Resultado da busca no PubChem aparecerá aqui...")
+        self.pubchem_result.installEventFilter(self)  # habilita zoom
+        layout.addRow("Resultado:", self.pubchem_result)
         
         # Buttons row
         buttons_layout = QHBoxLayout()
@@ -165,119 +174,26 @@ class ChemicalDrawTab(QWidget):
         return group
 
     def create_drawing_options_section(self) -> QGroupBox:
-        """Create drawing options section."""
+        """Opções de desenho (sem tamanho, zoom via scroll)."""
         group = QGroupBox("Opções de Desenho")
-        layout = QFormLayout()
-        layout.setVerticalSpacing(10)
-        
-        # Image size
-        size_layout = QHBoxLayout()
-        self.width_spin = QSpinBox()
-        self.width_spin.setRange(200, 1000)
-        self.width_spin.setValue(400)
-        self.width_spin.setSuffix(" px")
-        size_layout.addWidget(self.width_spin)
-        
-        size_layout.addWidget(QLabel("×"))
-        
-        self.height_spin = QSpinBox()
-        self.height_spin.setRange(200, 1000)
-        self.height_spin.setValue(300)
-        self.height_spin.setSuffix(" px")
-        size_layout.addWidget(self.height_spin)
-        
-        layout.addRow("Tamanho:", size_layout)
-        
-        # Show atom labels
+        v = QVBoxLayout()
         self.show_atom_labels = QCheckBox("Mostrar rótulos dos átomos")
-        layout.addRow("", self.show_atom_labels)
-        
-        # Show hydrogens
+        v.addWidget(self.show_atom_labels)
         self.show_hydrogens = QCheckBox("Mostrar hidrogênios")
-        layout.addRow("", self.show_hydrogens)
-        
-        # Apply options button
-        self.apply_options_button = QPushButton("Aplicar Opções")
+        v.addWidget(self.show_hydrogens)
+        self.apply_options_button = QPushButton("Redesenhar")
         self.apply_options_button.setMinimumHeight(35)
         self.apply_options_button.setStyleSheet("QPushButton { font-weight: bold; }")
         self.apply_options_button.clicked.connect(self.redraw_with_options)
         self.apply_options_button.setEnabled(False)
-        layout.addRow("", self.apply_options_button)
-        
-        group.setLayout(layout)
+        v.addWidget(self.apply_options_button)
+        group.setLayout(v)
         return group
 
     def create_molecule_library_section(self) -> QGroupBox:
-        """Create molecule library section."""
-        group = QGroupBox("Biblioteca de Moléculas")
-        layout = QVBoxLayout()
-        
-        # Categorias expandidas
-        categorias = [
-            "Alcanos", "Alcenos", "Alcinos", "Aromáticos", "Álcoois", "Éteres", "Aldeídos", "Cetonas", "Ácidos Carboxílicos", "Ésteres", "Aminas", "Amidas", "Haletos Orgânicos", "Compostos Nitrogenados", "Compostos Sulfurados", "Compostos Fosforados", "Compostos Organometálicos", "Naturais", "Medicamentos", "Outros"
-        ]
-        category_layout = QHBoxLayout()
-        category_layout.addWidget(QLabel("Categoria:"))
-        self.category_combo = QComboBox()
-        self.category_combo.addItems(categorias)
-        self.category_combo.currentTextChanged.connect(self.update_molecule_list)
-        category_layout.addWidget(self.category_combo)
-        layout.addLayout(category_layout)
-
-        # Base de dados expandida (exemplo, pode ser enriquecida com parsing do bluebook.txt)
-        self.molecule_db = {
-            "Alcanos": [
-                {"nome": "Metano", "iupac": "Methane", "formula": "CH4", "descricao": "Hidrocarboneto mais simples."},
-                {"nome": "Etano", "iupac": "Ethane", "formula": "C2H6", "descricao": "Segundo alcano da série."},
-                {"nome": "Propano", "iupac": "Propane", "formula": "C3H8", "descricao": "Gás de cozinha."},
-                {"nome": "Butano", "iupac": "Butane", "formula": "C4H10", "descricao": "Usado em isqueiros."}
-            ],
-            "Aromáticos": [
-                {"nome": "Benzeno", "iupac": "Benzene", "formula": "C6H6", "descricao": "Aromático clássico."},
-                {"nome": "Tolueno", "iupac": "Toluene", "formula": "C7H8", "descricao": "Derivado do benzeno."},
-                {"nome": "Fenol", "iupac": "Phenol", "formula": "C6H5OH", "descricao": "Benzeno com grupo hidroxila."}
-            ],
-            "Ácidos Carboxílicos": [
-                {"nome": "Ácido Acético", "iupac": "Acetic acid", "formula": "CH3COOH", "descricao": "Principal componente do vinagre."},
-                {"nome": "Ácido Fórmico", "iupac": "Formic acid", "formula": "HCOOH", "descricao": "Presente em formigas."}
-            ],
-            "Aldeídos": [
-                {"nome": "Formaldeído", "iupac": "Methanal", "formula": "HCHO", "descricao": "Conservante e desinfetante."},
-                {"nome": "Acetaldeído", "iupac": "Ethanal", "formula": "CH3CHO", "descricao": "Intermediário industrial."}
-            ],
-            "Outros": [
-                {"nome": "Cafeína", "iupac": "1,3,7-Trimethylpurine-2,6-dione", "formula": "C8H10N4O2", "descricao": "Alcaloide estimulante."}
-            ]
-        }
-
-        # Combo de moléculas
-        self.molecule_combo = QComboBox()
-        layout.addWidget(self.molecule_combo)
-
-        # Detalhes da molécula
-        self.molecule_details = QTextEdit()
-        self.molecule_details.setReadOnly(True)
-        self.molecule_details.setMinimumHeight(80)
-        self.molecule_details.setMaximumHeight(120)
-        self.molecule_details.setStyleSheet("font-family: monospace; font-size: 11px;")
-        layout.addWidget(self.molecule_details)
-
-        self.update_molecule_list()
-        # Load button
-        self.load_molecule_button = QPushButton("Carregar Molécula")
-        self.load_molecule_button.setMinimumHeight(35)
-        self.load_molecule_button.setStyleSheet("QPushButton { font-weight: bold; }")
-        self.load_molecule_button.clicked.connect(self.load_selected_molecule)
-        layout.addWidget(self.load_molecule_button)
-
-        # Save current molecule
-        self.save_button = QPushButton("Salvar Molécula Atual")
-        self.save_button.setMinimumHeight(35)
-        self.save_button.setStyleSheet("QPushButton { font-weight: bold; }")
-        self.save_button.setEnabled(False)
-        layout.addWidget(self.save_button)
-
-        group.setLayout(layout)
+        """Removido."""
+        group = QGroupBox("(Desativado)")
+        v = QVBoxLayout(); v.addWidget(QLabel("Biblioteca removida")); group.setLayout(v)
         return group
 
     def create_properties_section(self) -> QGroupBox:
@@ -286,10 +202,11 @@ class ChemicalDrawTab(QWidget):
         layout = QVBoxLayout()
         
         # Properties text area
-        self.detailed_properties = QTextEdit()
+        self.detailed_properties = ZoomableTextEdit(base_point_size=11)
         self.detailed_properties.setReadOnly(True)
         self.detailed_properties.setMinimumHeight(300)
-        self.detailed_properties.setStyleSheet("font-family: monospace; font-size: 11px;")
+        # Removido font-size fixo
+        self.detailed_properties.installEventFilter(self)
         layout.addWidget(self.detailed_properties)
         
         # Export buttons
@@ -320,27 +237,29 @@ class ChemicalDrawTab(QWidget):
         group.setLayout(layout)
         return group
     def create_drawing_section(self) -> QGroupBox:
-        """Create the chemical drawing section."""
         group = QGroupBox("Estrutura 2D")
         layout = QVBoxLayout()
-        
-        # Molecule display
+        # Scroll area para permitir ampliar além do tamanho do label
+        self.image_scroll = QScrollArea()
+        self.image_scroll.setWidgetResizable(True)
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setMinimumHeight(400)
         self.image_label.setMinimumWidth(500)
         self.image_label.setStyleSheet("border: 1px solid gray; background-color: white;")
-        self.image_label.setText("Digite um SMILES e clique em 'Desenhar'")
-        layout.addWidget(self.image_label)
-        
-        # Enhanced molecule info
-        self.molecule_info = QTextEdit()
+        self.image_label.setText("Digite o nome do composto e clique em 'Buscar' ou 'Desenhar'\nScroll: Zoom | Duplo-clique: Reset")
+        self.image_label.installEventFilter(self)
+        self.image_scroll.setWidget(self.image_label)
+        layout.addWidget(self.image_scroll)
+        self.molecule_info = ZoomableTextEdit(base_point_size=11)
         self.molecule_info.setReadOnly(True)
         self.molecule_info.setMinimumHeight(200)
         self.molecule_info.setMaximumHeight(250)
-        self.molecule_info.setStyleSheet("font-family: monospace; font-size: 11px;")
+        # Removido font-size fixo
+        self.molecule_info.installEventFilter(self)
+        self.register_text_widget(self.pubchem_result, 10)
+        self.register_text_widget(self.molecule_info, 11)
         layout.addWidget(self.molecule_info)
-        
         group.setLayout(layout)
         return group
 
@@ -415,68 +334,178 @@ class ChemicalDrawTab(QWidget):
         return group
 
     def draw_molecule(self):
-        """Draw molecule from SMILES input."""
-        smiles = self.smiles_input.text().strip()
+        smiles = getattr(self, 'current_smiles', '').strip()
+        print(f"[DEBUG] draw_molecule: smiles='{smiles}' (gera imagem base única)")
         if not smiles:
-            self.image_label.setText("Digite um SMILES válido.")
-            self.molecule_info.clear()
-            self.detailed_properties.clear()
-            return
-            
+            name = self.pubchem_input.text().strip()
+            if name:
+                s, _ = self.fetch_smiles_from_pubchem(name)
+                if s:
+                    self.current_smiles = s
+                    smiles = s
+                else:
+                    self.image_label.setText("Não foi possível obter SMILES.")
+                    self.molecule_info.clear(); self.detailed_properties.clear(); return
+            else:
+                self.image_label.setText("Digite o nome do composto e clique em 'Buscar'")
+                self.molecule_info.clear(); self.detailed_properties.clear(); return
         try:
-            # Parse SMILES
             mol = Chem.MolFromSmiles(smiles)
             if mol is None:
-                self.image_label.setText("SMILES inválido. Verifique a sintaxe.")
-                self.molecule_info.clear()
-                self.detailed_properties.clear()
-                return
-            
-            # Apply drawing options
-            draw_options = Draw.rdMolDraw2D.MolDrawOptions()
+                mol = Chem.MolFromSmiles(smiles, sanitize=False)
+                if mol: Chem.SanitizeMol(mol)
+            if mol is None:
+                self.image_label.setText("SMILES inválido."); return
+            opts = Draw.rdMolDraw2D.MolDrawOptions()
             if self.show_atom_labels.isChecked():
-                draw_options.addAtomIndices = True
-            
-            # Handle hydrogen display
+                opts.addAtomIndices = True
             if self.show_hydrogens.isChecked():
                 mol = Chem.AddHs(mol)
-            
-            # Generate image with custom size
-            size = (self.width_spin.value(), self.height_spin.value())
-            img = Draw.MolToImage(mol, size=size, options=draw_options)
-            
-            # Convert to QPixmap and display
-            buf = io.BytesIO()
-            img.save(buf, format='PNG')
-            buf.seek(0)
-            
-            qimg = QImage()
-            qimg.loadFromData(buf.getvalue())
-            pixmap = QPixmap.fromImage(qimg)
-            self.image_label.setPixmap(pixmap)
-            
-            # Display basic molecule info
-            info = self.get_molecule_info(mol, smiles)
-            self.molecule_info.setText(info)
-            
-            # Enable buttons
+            # Gera imagem base FIXA (não depende do zoom) — zoom apenas escala este pixmap (como equations)
+            img = Draw.MolToImage(mol, size=(self.base_size, self.base_size), options=opts)
+            buf = io.BytesIO(); img.save(buf, format='PNG')
+            qimg = QImage.fromData(buf.getvalue())
+            self._base_mol_pixmap = QPixmap.fromImage(qimg)
+            self.apply_image_zoom()  # aplica escala atual
+            self.current_mol = mol
+            self.molecule_info.setText(self.get_molecule_info(mol, smiles))
             self.view_3d_button.setEnabled(True)
             self.optimize_button.setEnabled(True)
             self.apply_options_button.setEnabled(True)
-            self.save_button.setEnabled(True)
             self.export_sdf_button.setEnabled(True)
             self.export_mol_button.setEnabled(True)
             self.export_png_button.setEnabled(True)
-            self.current_mol = mol  # Store molecule for 3D visualization
-            
-            # Update detailed properties
             self.update_detailed_properties(mol, smiles)
-            
         except Exception as e:
-            self.image_label.setText(f"Erro ao desenhar molécula: {str(e)}")
-            self.molecule_info.clear()
-            self.detailed_properties.clear()
-            self.disable_buttons()
+            self.image_label.setText(f"Erro ao desenhar: {e}")
+            self.molecule_info.clear(); self.detailed_properties.clear(); self.disable_buttons()
+
+    def search_pubchem(self):
+        """Busca nome no PubChem, obtém SMILES (com fallbacks) e desenha automaticamente."""
+        name = self.pubchem_input.text().strip()
+        if not name:
+            self.pubchem_result.setText("Digite um nome para buscar.")
+            return
+        self.pubchem_result.setText("Buscando no PubChem...")
+        try:
+            smiles, comp = self.fetch_smiles_from_pubchem(name)
+            if smiles:
+                self.current_smiles = smiles
+                formula = ''
+                iupac = ''
+                cid = ''
+                if comp:
+                    formula = getattr(comp, 'molecular_formula', '') or getattr(comp, 'MolecularFormula', '')
+                    iupac = getattr(comp, 'iupac_name', '') or getattr(comp, 'IUPACName', '')
+                    cid = getattr(comp, 'cid', '')
+                txt = f"✓ Composto: {iupac or name}\n"
+                if formula:
+                    txt += f"Fórmula: {formula}\n"
+                txt += f"SMILES: {smiles}\n"
+                if cid:
+                    txt += f"PubChem CID: {cid}\n"
+                txt += "Fonte: PubChem" if comp else "Fonte: Fallback"
+                self.pubchem_result.setText(txt)
+                self.draw_molecule()
+            else:
+                self.pubchem_result.setText("✗ Não encontrado ou sem SMILES.")
+        except Exception as e:
+            self.pubchem_result.setText(f"Erro: {e}")
+
+    def fetch_smiles_from_pubchem(self, name: str):
+        """Retorna (smiles, compound) com múltiplos fallbacks e logs detalhados.
+        Passos:
+          1. Normaliza nome (strip, lower, remove acentos simples)
+          2. Tenta PubChem via get_compounds
+          3. Tenta via CIDs + get_properties
+          4. Tenta API REST direta (requests)
+          5. Fallback local (dicionário de nomes comuns)
+        """
+        def _normalize(s: str):
+            import unicodedata
+            s2 = ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+            return s2.strip()
+        name_in = name
+        name = _normalize(name)
+        print(f"[DEBUG] fetch_smiles_from_pubchem: nome_original='{name_in}' normalizado='{name}'")
+
+        COMMON_NAME_SMILES = {
+            'glucose': 'OC[C@H]1O[C@@H](O)[C@H](O)[C@@H](O)[C@H]1O',
+            'benzene': 'c1ccccc1',
+            'toluene': 'Cc1ccccc1',
+            'phenol': 'c1ccccc1O',
+            'acetic acid': 'CC(=O)O',
+            'ethanol': 'CCO',
+            'caffeine': 'CN1C=NC2=C1C(=O)N(C(=O)N2C)C',
+            'ibuprofen': 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O'
+        }
+
+        try:
+            # 1) get_compounds
+            try:
+                compounds = pcp.get_compounds(name, 'name')
+                print(f"[DEBUG] fetch_smiles_from_pubchem: get_compounds len={len(compounds)}")
+            except Exception as e:
+                print(f"[DEBUG] fetch_smiles_from_pubchem: exceção get_compounds: {e}")
+                compounds = []
+            if compounds:
+                c = compounds[0]
+                smiles = (getattr(c, 'isomeric_smiles', None) or getattr(c, 'canonical_smiles', None) or getattr(c, 'smiles', None))
+                print(f"[DEBUG] fetch_smiles_from_pubchem: smiles primário='{smiles}'")
+                if smiles:
+                    return smiles.strip(), c
+            # 2) CIDs + properties
+            try:
+                cids = pcp.get_cids(name, 'name')
+                print(f"[DEBUG] fetch_smiles_from_pubchem: cids={cids}")
+            except Exception as e:
+                print(f"[DEBUG] fetch_smiles_from_pubchem: exceção get_cids: {e}")
+                cids = []
+            if cids:
+                cid = cids[0]
+                try:
+                    props = pcp.get_properties(['IsomericSMILES','CanonicalSMILES','SMILES','MolecularFormula','IUPACName'], cid, 'cid')
+                    print(f"[DEBUG] fetch_smiles_from_pubchem: props={props}")
+                except Exception as e:
+                    print(f"[DEBUG] fetch_smiles_from_pubchem: exceção get_properties: {e}")
+                    props = []
+                if props:
+                    p = props[0]
+                    smiles = p.get('IsomericSMILES') or p.get('CanonicalSMILES') or p.get('SMILES')
+                    if smiles:
+                        try:
+                            comp = pcp.Compound.from_cid(cid)
+                        except Exception:
+                            comp = None
+                        print(f"[DEBUG] fetch_smiles_from_pubchem: smiles via props='{smiles}'")
+                        return smiles.strip(), comp
+            # 3) API REST direta
+            try:
+                url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES,CanonicalSMILES,SMILES,Title/JSON"
+                r = requests.get(url, timeout=8)
+                print(f"[DEBUG] fetch_smiles_from_pubchem: REST status={r.status_code}")
+                if r.ok:
+                    data = r.json()
+                    props = data.get('PropertyTable', {}).get('Properties', [])
+                    if props:
+                        first = props[0]
+                        smiles = first.get('IsomericSMILES') or first.get('CanonicalSMILES') or first.get('SMILES')
+                        if smiles:
+                            print(f"[DEBUG] fetch_smiles_from_pubchem: REST smiles='{smiles}'")
+                            return smiles.strip(), None
+            except Exception as e:
+                print(f"[DEBUG] fetch_smiles_from_pubchem: exceção REST: {e}")
+            # 4) Fallback local
+            key = name.lower()
+            if key in COMMON_NAME_SMILES:
+                smiles = COMMON_NAME_SMILES[key]
+                print(f"[DEBUG] fetch_smiles_from_pubchem: fallback local para '{key}' -> '{smiles}'")
+                return smiles, None
+            print("[DEBUG] fetch_smiles_from_pubchem: nenhum SMILES encontrado")
+            return None, None
+        except Exception as e:
+            print(f"[DEBUG] fetch_smiles_from_pubchem erro geral: {e}")
+            return None, None
 
     def get_molecule_info(self, mol, smiles):
         """Get detailed information about the molecule."""
@@ -504,6 +533,29 @@ class ChemicalDrawTab(QWidget):
             return info
         except Exception:
             return f"SMILES: {smiles}\nInformações adicionais não disponíveis."
+
+    def update_detailed_properties(self, mol, smiles):
+        """Calcula e mostra propriedades detalhadas."""
+        try:
+            mw = Descriptors.MolWt(mol)
+            formula = rdMolDescriptors.CalcMolFormula(mol)
+            logp = Descriptors.MolLogP(mol)
+            hbd = Descriptors.NumHDonors(mol)
+            hba = Descriptors.NumHAcceptors(mol)
+            tpsa = Descriptors.TPSA(mol)
+            rot = Descriptors.NumRotatableBonds(mol)
+            lip_v = sum([
+                1 if mw>500 else 0,
+                1 if logp>5 else 0,
+                1 if hbd>5 else 0,
+                1 if hba>10 else 0
+            ])
+            txt = (f"INFORMAÇÕES MOLECULARES\n" + "="*40 +
+                   f"\nSMILES: {smiles}\nFórmula: {formula}\nPeso Molecular: {mw:.2f}\nLogP: {logp:.2f}\nHBA: {hba}  HBD: {hbd}" \
+                   f"\nTPSA: {tpsa:.2f}\nRotáveis: {rot}\nLipinski Violações: {lip_v}/4")
+            self.detailed_properties.setText(txt)
+        except Exception as e:
+            self.detailed_properties.setText(f"Erro propriedades: {e}")
 
     def show_3d_molecule(self):
         """Show molecule in 3D using py3Dmol."""
@@ -628,7 +680,7 @@ class ChemicalDrawTab(QWidget):
         </head>
         <body>
             <div class="message">
-                Digite um SMILES e clique em "Visualizar em 3D" para ver a molécula em três dimensões
+                Busque um composto no PubChem ou gere um aleatório para visualizar em 3D
             </div>
         </body>
         </html>
@@ -645,20 +697,18 @@ class ChemicalDrawTab(QWidget):
     # Additional functionality methods
     def clear_all(self):
         """Clear all inputs and displays."""
-        self.smiles_input.clear()
-        self.name_input.clear()
-        self.image_label.setText("Digite um SMILES e clique em 'Desenhar'")
+        self.pubchem_input.clear()
+        self.current_smiles = ""
+        self.image_label.setText("Digite o nome do composto e clique em 'Buscar' ou 'Desenhar'")
         self.molecule_info.clear()
         self.detailed_properties.clear()
         self.web_view.setHtml(self.get_empty_3d_html())
         self.disable_buttons()
 
     def disable_buttons(self):
-        """Disable all action buttons."""
         self.view_3d_button.setEnabled(False)
         self.optimize_button.setEnabled(False)
         self.apply_options_button.setEnabled(False)
-        self.save_button.setEnabled(False)
         self.export_sdf_button.setEnabled(False)
         self.export_mol_button.setEnabled(False)
         self.export_png_button.setEnabled(False)
@@ -683,259 +733,142 @@ class ChemicalDrawTab(QWidget):
             ("CC(C)(C)C1=CC=C(O)C=C1", "BHT"),
         ]
         smiles, name = random.choice(examples)
-        self.smiles_input.setText(smiles)
-        self.name_input.setText(name)
+        self.pubchem_input.setText(name)
+        self.current_smiles = smiles
         self.draw_molecule()
 
     def redraw_with_options(self):
-        """Redraw molecule with current options."""
         if hasattr(self, 'current_mol') and self.current_mol:
             self.draw_molecule()
 
-    def update_molecule_list(self):
-        """Update molecule list based on selected category."""
-        category = self.category_combo.currentText()
-        self.molecule_combo.clear()
-        for mol in self.molecule_db.get(category, []):
-            display = f"{mol['nome']} [{mol['formula']}]"
-            self.molecule_combo.addItem(display, mol)
-        self.show_molecule_details()
-        self.molecule_combo.currentIndexChanged.connect(self.show_molecule_details)
+    def register_text_widget(self, widget, base_pt):
+        """Mantido por compatibilidade; não usado para ZoomableTextEdit."""
+        if isinstance(widget, ZoomableTextEdit):
+            return
+        for w, _ in self._text_widgets:
+            if w is widget:
+                return
+        self._text_widgets.append((widget, base_pt))
+        # Garantir captura de eventos do viewport (QTextEdit usa viewport interno para rolagem)
+        widget.installEventFilter(self)
+        if hasattr(widget, 'viewport'):
+            widget.viewport().installEventFilter(self)
 
-    def show_molecule_details(self):
-        mol = self.molecule_combo.currentData()
-        if mol:
-            details = f"Nome: {mol['nome']}\nIUPAC: {mol['iupac']}\nFórmula: {mol['formula']}\nDescrição: {mol['descricao']}"
-            self.molecule_details.setText(details)
-        else:
-            self.molecule_details.clear()
+    def apply_text_zoom(self):
+        for w, base in self._text_widgets:
+            f = w.font()
+            f.setPointSizeF(base * self.text_zoom_factor)
+            w.setFont(f)
 
-    def load_selected_molecule(self):
-        """Load selected molecule from library."""
-        mol = self.molecule_combo.currentData()
-        if mol:
-            self.smiles_input.setText("")  # Sem SMILES
-            self.name_input.setText(mol['nome'])
-            self.molecule_info.setText(f"Nome: {mol['nome']}\nIUPAC: {mol['iupac']}\nFórmula: {mol['formula']}\nDescrição: {mol['descricao']}")
+    def adjust_text_zoom(self, delta_steps):
+        # delta_steps positivo aumenta
+        self.text_zoom_factor *= (1.1 ** delta_steps)
+        self.text_zoom_factor = max(0.5, min(self.text_zoom_factor, 3.0))
+        self.apply_text_zoom()
 
-    def save_current_molecule(self):
-        """Save current molecule to library."""
-        # Implementation for saving molecules to user library
-        QMessageBox.information(self, "Salvar", "Funcionalidade de salvamento será implementada.")
+    def eventFilter(self, obj, event):
+        # Apenas tratamento de zoom da imagem agora
+        img_label = getattr(self, 'image_label', None)
+        if img_label is not None and obj == img_label:
+            if event.type() == QEvent.MouseButtonDblClick:
+                self.zoom_factor = 1.0
+                self.apply_image_zoom()
+                return True
+            if event.type() == QEvent.Wheel:
+                delta = event.angleDelta().y()
+                step = 1.15 if (QApplication.keyboardModifiers() & Qt.ShiftModifier) else 1.10
+                if delta > 0:
+                    self.zoom_factor *= step
+                else:
+                    self.zoom_factor /= step
+                self.zoom_factor = max(0.2, min(self.zoom_factor, 8.0))
+                self.apply_image_zoom()
+                return True
+        return super().eventFilter(obj, event)
 
-    def update_detailed_properties(self, mol, smiles):
-        """Update detailed molecular properties."""
-        try:
-            # Basic properties
-            mw = Descriptors.MolWt(mol)
-            formula = rdMolDescriptors.CalcMolFormula(mol)
-            heavy_atoms = mol.GetNumHeavyAtoms()
-            
-            # Drug-like properties
-            logp = Descriptors.MolLogP(mol)
-            hbd = Descriptors.NumHDonors(mol)
-            hba = Descriptors.NumHAcceptors(mol)
-            tpsa = Descriptors.TPSA(mol)
-            rotatable = Descriptors.NumRotatableBonds(mol)
-            
-            # Lipinski's Rule of Five
-            lipinski_violations = 0
-            if mw > 500: lipinski_violations += 1
-            if logp > 5: lipinski_violations += 1
-            if hbd > 5: lipinski_violations += 1
-            if hba > 10: lipinski_violations += 1
-            
-            properties_text = f"""INFORMAÇÕES MOLECULARES DETALHADAS
-{'='*50}
+    def export_sdf(self):
+        if not hasattr(self, 'current_mol') or self.current_mol is None:
+            return
+        filename, _ = QFileDialog.getSaveFileName(self, "Salvar SDF", "", "SDF (*.sdf)")
+        if filename:
+            try:
+                mol = Chem.Mol(self.current_mol)
+                AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+                with open(filename, 'w') as f:
+                    f.write(Chem.MolToMolBlock(mol))
+                QMessageBox.information(self, "OK", "SDF salvo.")
+            except Exception as e:
+                QMessageBox.warning(self, "Erro", str(e))
 
-ESTRUTURA:
-SMILES: {smiles}
-Fórmula Molecular: {formula}
-Peso Molecular: {mw:.2f} g/mol
-Átomos Pesados: {heavy_atoms}
+    def export_mol(self):
+        if not hasattr(self, 'current_mol') or self.current_mol is None:
+            return
+        filename, _ = QFileDialog.getSaveFileName(self, "Salvar MOL", "", "MOL (*.mol)")
+        if filename:
+            try:
+                with open(filename, 'w') as f:
+                    f.write(Chem.MolToMolBlock(self.current_mol))
+                QMessageBox.information(self, "OK", "MOL salvo.")
+            except Exception as e:
+                QMessageBox.warning(self, "Erro", str(e))
 
-PROPRIEDADES FÍSICO-QUÍMICAS:
-LogP (lipofilicidade): {logp:.2f}
-Doadores de H: {hbd}
-Aceptores de H: {hba}
-TPSA (Área Superficial Polar): {tpsa:.2f} Ų
-Ligações Rotáveis: {rotatable}
-
-REGRA DE LIPINSKI (Drug-likeness):
-Violações: {lipinski_violations}/4
-{'PASSA' if lipinski_violations <= 1 else 'FALHA'} na Regra dos Cinco
-
-ANÁLISE ESTRUTURAL:
-Anéis Aromáticos: {Descriptors.NumAromaticRings(mol)}
-Anéis Saturados: {Descriptors.NumSaturatedRings(mol)}
-Anéis Heteroaromáticos: {Descriptors.NumAromaticHeterocycles(mol)}
-Centros Quirais: {Descriptors.NumSaturatedCarbocycles(mol)}
-
-OUTRAS PROPRIEDADES:
-Densidade de Elétrons: {Descriptors.BertzCT(mol):.2f}
-Fração Carbono sp3: {Descriptors.FractionCsp3(mol):.3f}
-Coeficiente de Balaban: {Descriptors.BalabanJ(mol):.3f}"""
-
-            self.detailed_properties.setText(properties_text)
-            
-        except Exception as e:
-            self.detailed_properties.setText(f"Erro ao calcular propriedades: {e}")
+    def export_png(self):
+        if not hasattr(self, 'current_mol') or self.current_mol is None:
+            return
+        filename, _ = QFileDialog.getSaveFileName(self, "Salvar PNG", "", "PNG (*.png)")
+        if filename:
+            try:
+                # Regera imagem em alta resolução proporcional ao zoom (para qualidade melhor que simples upscale)
+                size = int(self.base_size * self.zoom_factor)
+                size = max(200, min(size, 3000))
+                opts = Draw.rdMolDraw2D.MolDrawOptions()
+                if self.show_atom_labels.isChecked():
+                    opts.addAtomIndices = True
+                mol = self.current_mol
+                if self.show_hydrogens.isChecked():
+                    mol = Chem.AddHs(mol)
+                img = Draw.MolToImage(mol, size=(size, size), options=opts)
+                img.save(filename, 'PNG')
+                QMessageBox.information(self, "OK", "PNG salvo.")
+            except Exception as e:
+                QMessageBox.warning(self, "Erro", str(e))
 
     def optimize_geometry(self):
-        """Optimize molecular geometry and show in 3D."""
+        if not hasattr(self, 'current_mol') or self.current_mol is None:
+            return
         try:
-            if hasattr(self, 'current_mol') and self.current_mol:
-                # Create a copy and optimize
-                mol_copy = Chem.Mol(self.current_mol)
-                AllChem.EmbedMolecule(mol_copy, AllChem.ETKDG())
-                AllChem.UFFOptimizeMolecule(mol_copy, maxIters=1000)
-                
-                # Show optimized structure
-                sdf_content = Chem.MolToMolBlock(mol_copy)
-                html_content = self.create_3d_html(sdf_content)
-                self.web_view.setHtml(html_content)
-                
-                # Enable controls
-                self.style_combo.setEnabled(True)
-                self.rotate_button.setEnabled(True)
-                self.reset_view_button.setEnabled(True)
-                self.bg_color_button.setEnabled(True)
-                
+            mol = Chem.Mol(self.current_mol)
+            AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+            AllChem.UFFOptimizeMolecule(mol)
+            sdf = Chem.MolToMolBlock(mol)
+            self.web_view.setHtml(self.create_3d_html(sdf))
+            self.style_combo.setEnabled(True)
+            self.rotate_button.setEnabled(True)
+            self.reset_view_button.setEnabled(True)
+            self.bg_color_button.setEnabled(True)
         except Exception as e:
-            QMessageBox.warning(self, "Erro", f"Erro na otimização: {e}")
+            QMessageBox.warning(self, "Erro", f"Otimização: {e}")
 
     def change_3d_style(self):
-        """Change 3D visualization style."""
         style = self.style_combo.currentText()
         self.web_view.page().runJavaScript(f"window.changeStyle('{style}')")
 
     def change_bg_color(self):
-        """Change background color of 3D viewer."""
-        color = QColorDialog.getColor(QColor(255, 255, 255), self, "Escolher Cor de Fundo")
+        color = QColorDialog.getColor(QColor(255,255,255), self, "Cor de Fundo")
         if color.isValid():
-            hex_color = color.name()
-            self.web_view.page().runJavaScript(f"window.changeBgColor('{hex_color}')")
+            self.web_view.page().runJavaScript(f"window.changeBgColor('{color.name()}')")
 
-    def export_sdf(self):
-        """Export molecule as SDF file."""
-        if hasattr(self, 'current_mol') and self.current_mol:
-            filename, _ = QFileDialog.getSaveFileName(self, "Salvar SDF", "", "SDF Files (*.sdf)")
-            if filename:
-                try:
-                    mol_copy = Chem.Mol(self.current_mol)
-                    AllChem.EmbedMolecule(mol_copy, AllChem.ETKDG())
-                    with open(filename, 'w') as f:
-                        f.write(Chem.MolToMolBlock(mol_copy))
-                    QMessageBox.information(self, "Sucesso", "Arquivo SDF salvo com sucesso!")
-                except Exception as e:
-                    QMessageBox.warning(self, "Erro", f"Erro ao salvar: {e}")
-
-    def export_mol(self):
-        """Export molecule as MOL file."""
-        if hasattr(self, 'current_mol') and self.current_mol:
-            filename, _ = QFileDialog.getSaveFileName(self, "Salvar MOL", "", "MOL Files (*.mol)")
-            if filename:
-                try:
-                    with open(filename, 'w') as f:
-                        f.write(Chem.MolToMolBlock(self.current_mol))
-                    QMessageBox.information(self, "Sucesso", "Arquivo MOL salvo com sucesso!")
-                except Exception as e:
-                    QMessageBox.warning(self, "Erro", f"Erro ao salvar: {e}")
-
-    def export_png(self):
-        """Export 2D structure as PNG."""
-        if hasattr(self, 'current_mol') and self.current_mol:
-            filename, _ = QFileDialog.getSaveFileName(self, "Salvar PNG", "", "PNG Files (*.png)")
-            if filename:
-                try:
-                    size = (self.width_spin.value(), self.height_spin.value())
-                    img = Draw.MolToImage(self.current_mol, size=size)
-                    img.save(filename, 'PNG')
-                    QMessageBox.information(self, "Sucesso", "Imagem PNG salva com sucesso!")
-                except Exception as e:
-                    QMessageBox.warning(self, "Erro", f"Erro ao salvar: {e}")
-
-    def search_bluebook(self):
-        """Busca composto no arquivo bluebook.txt"""
-        compound_name = self.bluebook_input.text().strip()
-        
-        if not compound_name:
-            self.bluebook_result.setText("Digite o nome de um composto para buscar.")
+    def apply_image_zoom(self):
+        """Escala o pixmap base conforme zoom_factor usando tamanho original e permite rolagem."""
+        if not self._base_mol_pixmap or not self.image_label:
             return
-        
-        try:
-            # Busca no bluebook com timeout implícito
-            self.bluebook_result.setText("Buscando...")
-            self.bluebook_search_button.setEnabled(False)
-            
-            # Busca no bluebook
-            result = search_compound_in_bluebook(compound_name)
-            
-            if result["found"]:
-                # Formata o resultado para exibição
-                result_text = f"✓ Composto: {result['name']}\n"
-                
-                if result.get('formula'):
-                    result_text += f"Fórmula: {result['formula']}\n"
-                
-                if result.get('smiles'):
-                    result_text += f"SMILES: {result['smiles']}\n"
-                    # Preenche automaticamente o campo SMILES
-                    self.smiles_input.setText(result['smiles'])
-                
-                if result.get('type'):
-                    result_text += f"Tipo: {result['type']}\n"
-                
-                if result.get('iupac_info'):
-                    result_text += f"IUPAC: {result['iupac_info']}\n"
-                
-                # Adiciona informação da fonte
-                source_info = {
-                    'known_database': 'Base de dados conhecidos',
-                    'examples_section': 'Seção de exemplos do Blue Book',
-                    'pin_definition': 'Definição PIN do Blue Book',
-                    'systematic_name': 'Nome sistemático do Blue Book'
-                }
-                source = source_info.get(result.get('source', ''), 'Blue Book')
-                result_text += f"Fonte: {source}"
-                
-                self.bluebook_result.setText(result_text)
-                
-                # Preenche o campo nome se estiver vazio
-                if not self.name_input.text():
-                    self.name_input.setText(compound_name.title())
-                
-                # Se encontrou SMILES, oferece para desenhar automaticamente
-                if result.get('smiles'):
-                    reply = QMessageBox.question(
-                        self, 
-                        "Desenhar Molécula", 
-                        f"SMILES encontrado: {result['smiles']}\n\nDeseja desenhar a molécula automaticamente?",
-                        QMessageBox.Yes | QMessageBox.No
-                    )
-                    if reply == QMessageBox.Yes:
-                        self.draw_molecule()
-                        
-            else:
-                # Composto não encontrado
-                message = result.get('message', 'Composto não encontrado no Blue Book')
-                self.bluebook_result.setText(f"✗ {message}")
-                
-                # Oferece sugestões se disponível
-                try:
-                    suggestions = get_compound_suggestions(compound_name)
-                    if suggestions:
-                        suggestion_text = f"\n\n💡 Sugestões: {', '.join(suggestions[:5])}"
-                        current_text = self.bluebook_result.toPlainText()
-                        self.bluebook_result.setText(current_text + suggestion_text)
-                except:
-                    pass  # Ignora erros de sugestões
-                    
-        except Exception as e:
-            error_msg = f"✗ Erro na busca: {str(e)[:100]}..."
-            self.bluebook_result.setText(error_msg)
-            print(f"Erro detalhado na busca: {e}")
-        
-        finally:
-            # Reabilita o botão de busca
-            self.bluebook_search_button.setEnabled(True)
+        target_w = max(50, int(self._base_mol_pixmap.width() * self.zoom_factor))
+        target_h = max(50, int(self._base_mol_pixmap.height() * self.zoom_factor))
+        scaled = self._base_mol_pixmap.scaled(target_w, target_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.image_label.setPixmap(scaled)
+        self.image_label.resize(scaled.size())
+
+    def resizeEvent(self, event):
+        # Ao redimensionar a janela, reescala a imagem mantendo o zoom atual
+        self.apply_image_zoom()
+        super().resizeEvent(event)

@@ -26,13 +26,19 @@ class MainWindow(QMainWindow):
         tabs.addTab(PeriodicTableTabFinal(), "Tabela Periódica")
         tabs.addTab(EquationsTab(), "Equações")
 
+        # Configure the central widget
         self.setCentralWidget(tabs)
         self.resize(1200, 800)  # Janela maior para melhor visualização
         self.setMinimumSize(800, 600)  # Tamanho mínimo
 
+_main_window_ref = None  # keep a global reference to avoid GC
 
 def run():
+    global _main_window_ref
     app = QApplication.instance() or QApplication(sys.argv)
     w = MainWindow()
     w.show()
-    return app.exec()
+    # Keep a reference so the window isn't garbage collected
+    _main_window_ref = w
+    # ...existing code...
+    return w
